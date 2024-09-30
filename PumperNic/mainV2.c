@@ -95,3 +95,39 @@ int main() {
 
     return 0;
 }
+
+/*
+Definir Estructuras y Variables Globales:
+
+Crear semáforos para controlar el acceso a las estaciones de trabajo (hamburguesas, menú vegano, papas fritas).
+Crear mutexes para proteger el acceso a recursos compartidos.
+Modificar el Código del Hijo:
+
+Utilizar semáforos para controlar el acceso a las estaciones de trabajo.
+Utilizar mutexes para proteger el acceso a recursos compartidos.
+Modificar el Código del Padre:
+
+Crear hilos para manejar la preparación de pedidos.
+Utilizar semáforos y mutexes para sincronizar la preparación de pedidos.
+
+EXPLICACION
+Semáforos:
+
+sem_burger, sem_vegan, sem_fries: Controlan el acceso a las estaciones de trabajo.
+Inicializados con sem_init(), donde sem_fries se inicializa con 2 para permitir que dos empleados trabajen simultáneamente en las papas fritas.
+Mutex:
+
+mutex_order: Protege el acceso a recursos compartidos (no utilizado en este ejemplo, pero puede ser útil para futuras expansiones).
+Hilos:
+
+employee_thread(): Función que ejecuta cada hilo de empleado.
+Utiliza semáforos para controlar el acceso a las estaciones de trabajo.
+Código del Hijo:
+
+Crea un hilo para cada empleado y espera a que termine (pthread_join()).
+Recibe el pedido del pipe.
+Código del Padre:
+
+Envía el pedido a través del pipe.
+Espera a que todos los hijos terminen (wait(NULL)).
+*/

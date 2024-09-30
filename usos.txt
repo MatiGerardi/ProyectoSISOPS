@@ -27,3 +27,33 @@ Procesos:
     4) Separación del Código:
     * El código dentro del bloque if ((pids[i] = fork()) == 0) es ejecutado solo por los procesos hijos.
     * El código fuera del bloque if (después del bucle for) es ejecutado solo por el proceso padre.
+
+Semaforo: representa lugares disponibles, se decrementa una vez q es tomado el lugare
+==> Funcionamiento de los Hilos, Semáforos y Mutex
+1) Hilos (pthread):
+    * Cada cliente es representado por un hilo.
+    * La función fun_cliente es la rutina que ejecuta cada hilo de cliente.
+2) Semáforos (sem_t):
+    * sem_trywait(&cont_mesa_principal): Intenta decrementar el semáforo cont_mesa_principal sin bloquear. Si el semáforo es mayor que 0, el cliente entra a la cola de la mesa principal.
+    * sem_post(&cont_mesa_principal): Incrementa el semáforo cont_mesa_principal, indicando que un cliente ha dejado la mesa principal.
+    * sem_wait(&cont_mesa_comun): Decrementa el semáforo cont_mesa_comun, bloqueando si el semáforo es 0, hasta que otro hilo lo incremente. Esto asegura que solo un número limitado de clientes comunes puedan estar en la mesa común a la vez.
+    *sem_post(&cola_mesa_comun): Incrementa el semáforo cola_mesa_comun, indicando que un cliente ha entrado en la cola de la mesa común.
+    * sem_wait(&turno_comun_inicio): El cliente espera hasta que sea su turno para ser atendido en la mesa común.
+    * sem_wait(&turno_comun_fin): El cliente espera hasta que termine su turno en la mesa común.
+    * sem_post(&cont_mesa_comun): Incrementa el semáforo cont_mesa_comun, indicando que un cliente ha dejado la mesa común.
+3) Flujo del Código:
+    * Cada hilo de cliente obtiene su ID usando pthread_self().
+    * El cliente intenta entrar a la cola de la mesa principal usando sem_trywait(&cont_mesa_principal).
+    * Si el cliente puede entrar a la mesa principal, se determina aleatoriamente su tipo (rand() % 3).
+    * Cliente Común (cliente == 0):
+            * Intenta entrar a la mesa común usando sem_trywait(&cont_mesa_comun).
+            * Si tiene éxito, libera su lugar en la mesa principal (sem_post(&cont_mesa_principal)).
+            * Entra a la cola de la mesa común (sem_post(&cola_mesa_comun)).
+            * Espera su turno para ser atendido (sem_wait(&turno_comun_inicio)).
+            * Espera a que termine su turno (sem_wait(&turno_comun_fin)).
+            * Se retira y libera su lugar en la mesa común (sem_post(&cont_mesa_comun)).
+    Cliente Empresarial (cliente == 1):
+        * Intenta entrar a la mesa empresarial usando sem_wait(&cont_mesa_empresas).
+        * Si tiene éxito, imprime un mensaje indicando que ha entrado a la cola de la mesa empresarial.
+        * Libera su lugar en la mesa principal (sem_post(&cont_mesa_principal)).
+        * Entra a la cola de la mesa empresarial (sem_post(&cola_mesa_empresas)).
