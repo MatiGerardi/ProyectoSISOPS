@@ -39,7 +39,7 @@ int main() {
     for (int i = 0; i < NUM_EMPLOYEES; i++) {
         if ((pids[i] = fork()) == 0) {
             // Código del hijo
-            close(pipe_fd[1]); // Cierra el extremo de escritura del pipe
+            close(pipe_fd[1]); // Cierra el extremo de escritura del pipe PADRE
             if (i == 0) {
                 prepare_burger();
             } else if (i == 1) {
@@ -48,16 +48,16 @@ int main() {
                 prepare_fries();
             }
             receive_order(pipe_fd[0]);
-            close(pipe_fd[0]); // Cierra el extremo de lectura del pipe
+            close(pipe_fd[0]); // Cierra el extremo de lectura del pipe HIJO
             exit(EXIT_SUCCESS);
         }
     }
 
     // Código del padre
-    close(pipe_fd[0]); // Cierra el extremo de lectura del pipe
+    close(pipe_fd[0]); // Cierra el extremo de lectura del pipe HIJO
     char *order = "Pedido de cliente VIP";
     write(pipe_fd[1], order, sizeof(order));
-    close(pipe_fd[1]); // Cierra el extremo de escritura del pipe
+    close(pipe_fd[1]); // Cierra el extremo de escritura del pipe PADRE
 
     for (int i = 0; i < NUM_EMPLOYEES; i++) {
         wait(NULL); // Espera a que todos los hijos terminen
