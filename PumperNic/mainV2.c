@@ -6,6 +6,7 @@
 #include <semaphore.h>
 
 #define NUM_EMPLOYEES 4
+#define MAX_COLA = 20 //capacidad maxima para cada cola
 
 sem_t sem_burger, sem_vegan, sem_fries;
 pthread_mutex_t mutex_order = PTHREAD_MUTEX_INITIALIZER;
@@ -62,13 +63,9 @@ int main() {
     sem_init(&sem_vegan, 0, 1);
     sem_init(&sem_fries, 0, 2); // Dos empleados para papas fritas
 
-    if (pipe(pipe_fd) == -1) {
-        perror("pipe");
-        exit(EXIT_FAILURE);
-    }
-
     for (int i = 0; i < NUM_EMPLOYEES; i++) {
-        if ((pids[i] = fork()) == 0) {
+        pids[i] = fork();
+        if (pids[i] == 0) {
             // Código del hijo
             close(pipe_fd[1]); // Cierra el extremo de escritura del pipe PADRE
             pthread_create(&threads[i], NULL, employee_thread, &ids[i]);
@@ -98,36 +95,28 @@ int main() {
 
 /*
 Definir Estructuras y Variables Globales:
-
-Crear semáforos para controlar el acceso a las estaciones de trabajo (hamburguesas, menú vegano, papas fritas).
-Crear mutexes para proteger el acceso a recursos compartidos.
+    Crear semáforos para controlar el acceso a las estaciones de trabajo (hamburguesas, menú vegano, papas fritas).
+    Crear mutexes para proteger el acceso a recursos compartidos.
 Modificar el Código del Hijo:
-
-Utilizar semáforos para controlar el acceso a las estaciones de trabajo.
-Utilizar mutexes para proteger el acceso a recursos compartidos.
+    Utilizar semáforos para controlar el acceso a las estaciones de trabajo.
+    Utilizar mutexes para proteger el acceso a recursos compartidos.
 Modificar el Código del Padre:
-
-Crear hilos para manejar la preparación de pedidos.
-Utilizar semáforos y mutexes para sincronizar la preparación de pedidos.
+    Crear hilos para manejar la preparación de pedidos.
+    Utilizar semáforos y mutexes para sincronizar la preparación de pedidos.
 
 EXPLICACION
 Semáforos:
-
-sem_burger, sem_vegan, sem_fries: Controlan el acceso a las estaciones de trabajo.
-Inicializados con sem_init(), donde sem_fries se inicializa con 2 para permitir que dos empleados trabajen simultáneamente en las papas fritas.
+    sem_burger, sem_vegan, sem_fries: Controlan el acceso a las estaciones de trabajo.
+    Inicializados con sem_init(), donde sem_fries se inicializa con 2 para permitir que dos empleados trabajen simultáneamente en las papas fritas.
 Mutex:
-
-mutex_order: Protege el acceso a recursos compartidos (no utilizado en este ejemplo, pero puede ser útil para futuras expansiones).
+    mutex_order: Protege el acceso a recursos compartidos (no utilizado en este ejemplo, pero puede ser útil para futuras expansiones).
 Hilos:
-
-employee_thread(): Función que ejecuta cada hilo de empleado.
-Utiliza semáforos para controlar el acceso a las estaciones de trabajo.
-Código del Hijo:
-
-Crea un hilo para cada empleado y espera a que termine (pthread_join()).
-Recibe el pedido del pipe.
-Código del Padre:
-
-Envía el pedido a través del pipe.
-Espera a que todos los hijos terminen (wait(NULL)).
+    employee_thread(): Función que ejecuta cada hilo de empleado.
+    Utiliza semáforos para controlar el acceso a las estaciones de trabajo.
+    Código del Hijo:
+        Crea un hilo para cada empleado y espera a que termine (pthread_join()).
+        Recibe el pedido del pipe.
+    Código del Padre:
+        Envía el pedido a través del pipe.
+    Espera a que todos los hijos terminen (wait(NULL)).
 */

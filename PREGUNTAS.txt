@@ -1,0 +1,11 @@
+--> es necesario:
+
+    if (pipe(pipe_fd) == -1) {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+
+--> enunciado precesos e Hilos
+    puedo hacer un proceso general y despues un hilo para cada empleado?
+
+--> en todo caso, es necesario que cada proceso Empleado tenga un hilo?
