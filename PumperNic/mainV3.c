@@ -13,8 +13,13 @@
 #define NO_PEDIDO = 0 //Representa que no quiere un pedido de algun tipo
 
 pthread_t clientes[NUM_CLIENTES];
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_cliente = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_ham = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_vegan = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_fritas1 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_fritas2 = PTHREAD_MUTEX_INITIALIZER;
 int pipe_fd[2];
+
 
 void prepare_burger() {
     printf("Empleado preparando hamburguesa...\n");
@@ -35,9 +40,9 @@ void* fun_cliente(void* arg) {
     int pedido[4];
 
     // Cliente espera en la cola
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&mutex_cliente);
     printf("Cliente %d esperando en la cola...\n", id);
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&mutex_cliente);
 
     // Espera a ser atendido
     read(pipe_fd[0], buffer, sizeof(buffer));
@@ -49,7 +54,7 @@ void* fun_cliente(void* arg) {
 
     // Enviar mensaje a través del pipe
     write(pipe_fd[1], pedido, 1);
-    mutex_lock(&mutex);
+    mutex_lock(&mutex_cliente);
     printf("Cliente %d está esperando\n", id);
 
     // Esperar a ser atendido
@@ -57,9 +62,9 @@ void* fun_cliente(void* arg) {
     printf("Cliente %d ha sido atendido\n", id);
 
     // Cliente desocupa la cola
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&mutex_cliente);
     printf("Cliente %d desocupando la cola...\n", id);
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&mutex_cliente);
 
     return NULL;
 }
@@ -86,9 +91,7 @@ void* recepcion(void* arg) {
             }else if(pedido[i] == FRTAS){
                 prepare_fries();
             }
-
-         } 
-        
+         }        
 
         // Enviar mensaje de liberación al cliente
         write(pipe_fd[1], &msg, 1);
