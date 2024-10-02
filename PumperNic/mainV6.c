@@ -1,15 +1,44 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 
 #define NUM_EMPLOYEES 5
+#define NUM_CLIENTES 50
+
+typedef struct {
+    char pedido[3]; // Combinación de 'H', 'V', 'P'
+    int esVIP;
+} Cliente;
+
+void generarPedidos(Cliente clientes[]) {
+    srand(time(NULL));
+    for (int i = 0; i < NUM_CLIENTES; i++) {
+        int numPedidos = rand() % 3 + 1; // Entre 1 y 3 pedidos
+        for (int j = 0; j < numPedidos; j++) {
+            int tipoPedido = rand() % 3;
+            if (tipoPedido == 0) {
+                clientes[i].pedido[j] = 'H';
+            } else if (tipoPedido == 1) {
+                clientes[i].pedido[j] = 'V';
+            } else {
+                clientes[i].pedido[j] = 'P';
+            }
+        }
+        clientes[i].pedido[numPedidos] = '\0'; // Terminar la cadena de pedidos
+        clientes[i].esVIP = rand() % 2; // 50% de probabilidad de ser VIP
+    }
+}
 
 int main() {
     int pipeHamburguesas[2], pipeVegano[2], pipePapas1[2], pipePapas2[2], pipeDespacho[2];
     int pipeStatusPapas1[2], pipeStatusPapas2[2]; // Pipes para verificar el estado de los empleados de papas fritas
     pid_t pid[NUM_EMPLOYEES];
+    Cliente clientes[NUM_CLIENTES];
+
+    // Generar pedidos de clientes
+    generarPedidos(clientes);
 
     // Crear pipes
     pipe(pipeHamburguesas);
@@ -91,32 +120,33 @@ int main() {
     close(pipeStatusPapas1[1]);
     close(pipeStatusPapas2[1]);
 
-    while (1) {
-        // Recibir pedido
-        char pedido;
-        scanf(" %c", &pedido);
-        if (pedido == 'H') {
-            write(pipeHamburguesas[1], &pedido, sizeof(char));
-        } else if (pedido == 'V') {
-            write(pipeVegano[1], &pedido, sizeof(char));
-        } else if (pedido == 'P') {
-            // Verificar si el empleado 1 está libre
-            char status;
-            read(pipeStatusPapas1[0], &status, sizeof(char));
-            if (status == 'L') {
-                write(pipePapas1[1], &pedido, sizeof(char));
-            } else {
-                // Si el empleado 1 está ocupado, asignar al empleado 2
-                read(pipeStatusPapas2[0], &status, sizeof(char));
+    for (int i = 0; i < NUM_CLIENTES; i++) {
+        printf("Cliente %d: Pedido: %s %s\n", i + 1, clientes[i].pedido, clientes[i].esVIP ? "(VIP)" : "");
+        for (int j = 0; clientes[i].pedido[j] != '\0'; j++) {
+            char pedido = clientes[i].pedido[j];
+            if (pedido == 'H') {
+                write(pipeHamburguesas[1], &pedido, sizeof(char));
+            } else if (pedido == 'V') {
+                write(pipeVegano[1], &pedido, sizeof(char));
+            } else if (pedido == 'P') {
+                // Verificar si el empleado 1 está libre
+                char status;
+                read(pipeStatusPapas1[0], &status, sizeof(char));
                 if (status == 'L') {
-                    write(pipePapas2[1], &pedido, sizeof(char));
+                    write(pipePapas1[1], &pedido, sizeof(char));
                 } else {
-                    // Si ambos están ocupados, esperar y reintentar
-                    printf("Ambos empleados de papas fritas están ocupados. Reintentando...\n");
-                    continue;
+                    // Si el empleado 1 está ocupado, asignar al empleado 2
+                    read(pipeStatusPapas2[0], &status, sizeof(char));
+                    if (status == 'L') {
+                        write(pipePapas2[1], &pedido, sizeof(char));
+                    } else {
+                        // Si ambos están ocupados, esperar y reintentar
+                        printf("Ambos empleados de papas fritas están ocupados. Reintentando...\n");
+                        j--; // Reintentar el mismo pedido
+                        continue;
+                    }
                 }
             }
-        } else {
         }
     }
 
