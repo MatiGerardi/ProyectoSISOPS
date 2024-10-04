@@ -54,11 +54,31 @@ void moverVIPsAlPrincipio(Cliente clientes[], int numClientes) {
     }
 }
 
+void* empleadoPapas1(void* arg) {
+    char pedido;
+    while (read(pipePapas1[0], &pedido, sizeof(char)) > 0) {
+        // Procesar pedido
+        sem_post(&semEmpleado1); // Marcar como libre
+    }
+    return NULL;
+}
+
+void* empleadoPapas2(void* arg) {
+    char pedido;
+    while (read(pipePapas2[0], &pedido, sizeof(char)) > 0) {
+        // Procesar pedido
+        sem_post(&semEmpleado2); // Marcar como libre
+    }
+    return NULL;
+}
+
 int main() {
     int pipeHamburguesas[2], pipeVegano[2], pipePapas1[2], pipePapas2[2], pipeDespacho[2];
-    int pipeStatusPapas1[2], pipeStatusPapas2[2]; // Pipes para verificar el estado de los empleados de papas fritas
     pid_t pid[NUM_EMPLOYEES];
     Cliente clientes[NUM_CLIENTES];
+
+    sem_t semEmpleado1, semEmpleado2;
+    pthread_t threadEmpleado1, threadEmpleado2;
 
     // Generar pedidos de clientes
     generarPedidos(clientes);
@@ -72,8 +92,15 @@ int main() {
     pipe(pipePapas1);
     pipe(pipePapas2);
     pipe(pipeDespacho);
-    pipe(pipeStatusPapas1);
-    pipe(pipeStatusPapas2);
+
+    // Inicializar semáforos
+    sem_init(&semEmpleado1, 0, 1); // Empleado 1 libre
+    sem_init(&semEmpleado2, 0, 1); // Empleado 2 libre
+
+    // Crear hilos
+    pthread_create(&threadEmpleado1, NULL, empleadoPapas1, NULL);
+    pthread_create(&threadEmpleado2, NULL, empleadoPapas2, NULL);
+
 
     // Crear procesos hijos
     for (int i = 0; i < NUM_EMPLOYEES; i++) {
@@ -101,28 +128,6 @@ int main() {
                     read(pipeVegano[0], &pedido, sizeof(char));
                     printf("Preparando menú vegano\n");
                     write(pipeDespacho[1], "V", sizeof(char));
-                }
-            } else if (i == 2) { // Proceso de Papas Fritas 1
-                close(pipePapas1[1]);
-                close(pipeStatusPapas1[0]);
-                while (1) {
-                    // Preparar papas fritas
-                    char pedido;
-                    read(pipePapas1[0], &pedido, sizeof(char));
-                    printf("Preparando papas fritas (Empleado 1)\n");
-                    write(pipeDespacho[1], "P", sizeof(char));
-                    write(pipeStatusPapas1[1], "L", sizeof(char)); // Indicar que está libre
-                }
-            } else if (i == 3) { // Proceso de Papas Fritas 2
-                close(pipePapas2[1]);
-                close(pipeStatusPapas2[0]);
-                while (1) {
-                    // Preparar papas fritas
-                    char pedido;
-                    read(pipePapas2[0], &pedido, sizeof(char));
-                    printf("Preparando papas fritas (Empleado 2)\n");
-                    write(pipeDespacho[1], "P", sizeof(char));
-                    write(pipeStatusPapas2[1], "L", sizeof(char)); // Indicar que está libre
                 }
             } else if (i == 4) { // Proceso de Despacho
                 close(pipeDespacho[1]);
@@ -154,24 +159,16 @@ int main() {
                 write(pipeHamburguesas[1], &pedido, sizeof(char));
             } else if (pedido == 'V') {
                 write(pipeVegano[1], &pedido, sizeof(char));
-            } else /*if (pedido == 'P') { //Problema
-                // Verificar si el empleado 1 está libre
-                char status;
-                read(pipeStatusPapas1[0], &status, sizeof(char));
-                if (status == 'L') {
+            } else if (pedido == 'P') {
+                if (sem_trywait(&semEmpleado1) == 0) {
                     write(pipePapas1[1], &pedido, sizeof(char));
+                } else if (sem_trywait(&semEmpleado2) == 0) {
+                    write(pipePapas2[1], &pedido, sizeof(char));
                 } else {
-                    // Si el empleado 1 está ocupado, asignar al empleado 2
-                    read(pipeStatusPapas2[0], &status, sizeof(char));
-                    if (status == 'L') {
-                        write(pipePapas2[1], &pedido, sizeof(char));
-                    } else {
-                        // Si ambos están ocupados, esperar y reintentar
-                        printf("Ambos empleados de papas fritas están ocupados. Reintentando...\n");
-                        j--; // Reintentar el mismo pedido
-                        continue;
-                    }
-                }*/
+                    printf("Ambos empleados de papas fritas están ocupados. Reintentando...\n");
+                    j--; // Reintentar el mismo pedido
+                    continue;
+                }
             }
         }
     }
@@ -180,6 +177,14 @@ int main() {
     for (int i = 0; i < NUM_EMPLOYEES; i++) {
         wait(NULL);
     }
+
+    // Esperar a que terminen los hilos
+    pthread_join(threadEmpleado1, NULL);
+    pthread_join(threadEmpleado2, NULL);
+
+    // Destruir semáforos
+    sem_destroy(&semEmpleado1);
+    sem_destroy(&semEmpleado2);
 
     return 0;
 }
