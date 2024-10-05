@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <pthread.h>
+#include <semaphore.h>
 
 #define NUM_EMPLOYEES 5
 #define NUM_CLIENTES 50
