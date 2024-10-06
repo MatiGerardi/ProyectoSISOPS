@@ -14,6 +14,12 @@ typedef struct {
     int esVIP;
 } Cliente;
 
+int pipeHamburguesas[2], pipeVegano[2], pipePapas1[2], pipePapas2[2], pipeDespacho[2];
+Cliente clientes[NUM_CLIENTES];
+
+sem_t semEmpleado1, semEmpleado2;
+pthread_t threadEmpleado1, threadEmpleado2;
+
 void generarPedidos(Cliente clientes[]) {
     srand(time(NULL));
     for (int i = 0; i < NUM_CLIENTES; i++) {
@@ -60,6 +66,9 @@ void* empleadoPapas1(void* arg) {
     char pedido;
     while (read(pipePapas1[0], &pedido, sizeof(char)) > 0) {
         // Procesar pedido
+        sem_wait(&semEmpleado1); // Marca como ocupado
+        printf("Empleado 1 preparando papas fritas\n");
+        write(pipePapas1[1], &pedido, sizeof(char));
         sem_post(&semEmpleado1); // Marcar como libre
     }
     return NULL;
@@ -69,18 +78,16 @@ void* empleadoPapas2(void* arg) {
     char pedido;
     while (read(pipePapas2[0], &pedido, sizeof(char)) > 0) {
         // Procesar pedido
+        sem_wait(&semEmpleado2); // Marca como ocupado
+        printf("Empleado 2 preparando papas fritas\n");
+        write(pipePapas2[1], &pedido, sizeof(char));
         sem_post(&semEmpleado2); // Marcar como libre
     }
     return NULL;
 }
 
 int main() {
-    int pipeHamburguesas[2], pipeVegano[2], pipePapas1[2], pipePapas2[2], pipeDespacho[2];
     pid_t pid[NUM_EMPLOYEES];
-    Cliente clientes[NUM_CLIENTES];
-
-    sem_t semEmpleado1, semEmpleado2;
-    pthread_t threadEmpleado1, threadEmpleado2;
 
     // Generar pedidos de clientes
     generarPedidos(clientes);
@@ -94,15 +101,6 @@ int main() {
     pipe(pipePapas1);
     pipe(pipePapas2);
     pipe(pipeDespacho);
-
-    // Inicializar semáforos
-    sem_init(&semEmpleado1, 0, 1); // Empleado 1 libre
-    sem_init(&semEmpleado2, 0, 1); // Empleado 2 libre
-
-    // Crear hilos
-    pthread_create(&threadEmpleado1, NULL, empleadoPapas1, NULL);
-    pthread_create(&threadEmpleado2, NULL, empleadoPapas2, NULL);
-
 
     // Crear procesos hijos
     for (int i = 0; i < NUM_EMPLOYEES; i++) {
@@ -131,6 +129,25 @@ int main() {
                     printf("Preparando menú vegano\n");
                     write(pipeDespacho[1], "V", sizeof(char));
                 }
+            } else if (i == 2 || i == 3) { // Proceso de Papas Fritas
+                close(pipePapas1[1]);
+                close(pipePapas2[1]);
+
+                // Inicializar semáforos
+                sem_init(&semEmpleado1, 0, 1); // Empleado 1 libre
+                sem_init(&semEmpleado2, 0, 1); // Empleado 2 libre
+
+                // Crear hilos
+                pthread_create(&threadEmpleado1, NULL, empleadoPapas1, NULL);
+                pthread_create(&threadEmpleado2, NULL, empleadoPapas2, NULL);
+
+                // Esperar a que terminen los hilos
+                pthread_join(threadEmpleado1, NULL);
+                pthread_join(threadEmpleado2, NULL);
+
+                // Destruir semáforos
+                sem_destroy(&semEmpleado1);
+                sem_destroy(&semEmpleado2);
             } else if (i == 4) { // Proceso de Despacho
                 close(pipeDespacho[1]);
                 while (1) {
@@ -150,9 +167,8 @@ int main() {
     close(pipePapas1[0]);
     close(pipePapas2[0]);
     close(pipeDespacho[0]);
-    close(pipeStatusPapas1[1]);
-    close(pipeStatusPapas2[1]);
 
+    // Proceso padre: enviar pedidos
     for (int i = 0; i < NUM_CLIENTES; i++) {
         printf("Cliente %d: Pedido: %s %s\n", i + 1, clientes[i].pedido, clientes[i].esVIP ? "(VIP)" : "");
         for (int j = 0; clientes[i].pedido[j] != '\0'; j++) {
@@ -179,14 +195,6 @@ int main() {
     for (int i = 0; i < NUM_EMPLOYEES; i++) {
         wait(NULL);
     }
-
-    // Esperar a que terminen los hilos
-    pthread_join(threadEmpleado1, NULL);
-    pthread_join(threadEmpleado2, NULL);
-
-    // Destruir semáforos
-    sem_destroy(&semEmpleado1);
-    sem_destroy(&semEmpleado2);
 
     return 0;
 }

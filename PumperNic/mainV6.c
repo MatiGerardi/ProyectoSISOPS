@@ -171,8 +171,8 @@ int main() {
                         j--; // Reintentar el mismo pedido
                         continue;
                     }
-                }*/
-            }
+                }
+            }*/
         }
     }
 
