@@ -17,8 +17,7 @@ typedef struct {
 int pipeHamburguesas[2], pipeVegano[2], pipePapas1[2], pipePapas2[2], pipeDespacho[2];
 Cliente clientes[NUM_CLIENTES];
 
-sem_t semEmpleado1, semEmpleado2;
-pthread_t threadEmpleado1, threadEmpleado2;
+int fritas1 = 0, fritas2 = 0; // 0 = libre, 1 = ocupado
 
 void generarPedidos(Cliente clientes[]) {
     srand(time(NULL));
@@ -61,31 +60,6 @@ void moverVIPsAlPrincipio(Cliente clientes[], int numClientes) {
             clientes[j] = temp;
         }
     }
-}
-
-
-void* empleadoPapas1() {
-    char pedido;
-    printf("Empleado 1 read: %d\n", read(pipePapas1[0], &pedido, sizeof(char)));
-    while (read(pipePapas1[0], &pedido, sizeof(char)) > 0) {
-        // Procesar pedido
-        sem_post(&semEmpleado2); // Marcar como libre
-        printf("Empleado 1 preparando papas fritas\n");
-        write(pipePapas1[1], &pedido, sizeof(char));
-    }
-    return NULL;
-}
-
-void* empleadoPapas2() {
-    char pedido;
-    printf("Empleado 2 read: %d\n", read(pipePapas2[0], &pedido, sizeof(char)));
-    while (read(pipePapas2[0], &pedido, sizeof(char)) > 0) {
-        // Procesar pedido
-        sem_post(&semEmpleado1); // Marcar como libre
-        printf("Empleado 2 preparando papas fritas\n");
-        write(pipePapas2[1], &pedido, sizeof(char));
-    }
-    return NULL;
 }
 
 int main() {
@@ -131,27 +105,26 @@ int main() {
                     printf("Preparando menú vegano\n");
                     write(pipeDespacho[1], "V", sizeof(char));
                 }
-            } else if (i == 2) { // Proceso de Papas Fritas
+            } else if (i == 2) { // Proceso de Papas Fritas 1
                 close(pipePapas1[1]);
+                while (1) {
+                    // Preparar papas fritas
+                    char pedido;
+                    read(pipePapas1[0], &pedido, sizeof(char));
+                    printf("Preparando papas fritas\n");
+                    write(pipeDespacho[1], "P", sizeof(char));
+                    fritas1 = 0; // se desocupa
+                }
+            } else if (i == 3) { // Proceso de Papas Fritas 2
                 close(pipePapas2[1]);
-
-                // Inicializar semáforos
-                sem_init(&semEmpleado1, 0, 1); // Empleado 1 libre
-                sem_init(&semEmpleado2, 0, 1); // Empleado 2 libre
-
-                // Crear hilos
-                printf("Creo presos papas\n");
-                pthread_create(&threadEmpleado1, NULL, empleadoPapas1, NULL);
-                pthread_create(&threadEmpleado2, NULL, empleadoPapas2, NULL);
-
-                // Esperar a que terminen los hilos
-                pthread_join(threadEmpleado1, NULL);
-                pthread_join(threadEmpleado2, NULL);
-                printf("Join depresos papas\n");
-
-                // Destruir semáforos
-                sem_destroy(&semEmpleado1);
-                sem_destroy(&semEmpleado2);
+                while (1) {
+                    // Preparar papas fritas
+                    char pedido;
+                    read(pipePapas2[0], &pedido, sizeof(char));
+                    printf("Preparando papas fritas\n");
+                    write(pipeDespacho[1], "P", sizeof(char));
+                    fritas2 = 0; // se desocupa
+                }
             } else if (i == 4) { // Proceso de Despacho
                 close(pipeDespacho[1]);
                 while (1) {
@@ -182,11 +155,11 @@ int main() {
             } else if (pedido == 'V') {
                 write(pipeVegano[1], &pedido, sizeof(char));
             } else if (pedido == 'P') {
-                if (sem_trywait(&semEmpleado1) == 0) {
-                    sem_wait(&semEmpleado1);
+                if (fritas1 == 0) {
+                    fritas1 = 1;
                     write(pipePapas1[1], &pedido, sizeof(char));
-                } else if (sem_trywait(&semEmpleado2) == 0) {
-                    sem_wait(&semEmpleado2);
+                } else if (fritas2 == 0) {
+                    fritas2 = 1;
                     write(pipePapas2[1], &pedido, sizeof(char));
                 } else {
                     printf("Ambos empleados de papas fritas están ocupados. Reintentando...\n");
