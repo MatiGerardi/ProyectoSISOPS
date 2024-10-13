@@ -1,32 +1,3 @@
---> es necesario:
+close de los pipes, estan bien?
 
-    if (pipe(pipe_fd) == -1) {
-        perror("pipe");
-        exit(EXIT_FAILURE);
-    }
-
---> enunciado precesos e Hilos
-    puedo hacer un proceso general y despues un hilo para cada empleado?
-
---> en todo caso, es necesario que cada proceso Empleado tenga un hilo?
-
-PSEUDOCODIGO:
-Cola_clientes
-el primer cliente le avisa por un pipe al empleado_recep su pedido y queda esperando hasta que este listo
-(el pedido es pedido[id, ham, veg, fritas], si ham es 0 no el cliente no pidio hamburguesa, si es 1 si pidio, lo mimo con el resto, 
-y si o si un de los 3(ham, veg o fritas) es 1, siendo fritas la mas solicitada aunque puede ser 0)
-El empleado_recep lee el pipe
-Si el cliente es VIP pone el pedido primero en la cola_pedidos
-    sino lo encola ultimo en cola_pedidos
-
-(Cada empleado)
-Si empleado_ham esta libre y pedido[1] == 1
-    emepleado_ham esta ocupado
-    prepara la hamburguesa (pedido[1] == 0)
-    emepleado_ham esta libre
-sino toma el siguieten pedido de la cola_pedidos
-- lo mismo para empleado_veg y empleado_fritas1 y empleado_fritas2 (ambos pueden preparar fritas)
-
-Cuando pedido[id, 0, 0, 0] el pedido esta listo
-    se saca el pedido de la cola_pedidos
-    y saca al cliente de de la Cola_clientes
+bookmarks 
