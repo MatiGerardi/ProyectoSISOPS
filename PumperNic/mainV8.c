@@ -15,9 +15,13 @@ sem_t cola_normal, cola_vip;
 
 typedef struct {
     char pedido[4]; // Combinación de 'H', 'V', 'P'
+    char pedido[4]; // Combinación de 'H', 'V', 'P'
     int esVIP;
 } Cliente;
 
+int pipeHamburguesas[2], pipeVegano[2], pipeFritas[2], pipeDistribucion[2],
+    pipeClientes[2], pipeClientesVIP[2],
+    pipeHamRecep[2], pipeVegRecep[2], pipeFritasRecep[2];
 int pipeHamburguesas[2], pipeVegano[2], pipeFritas[2], pipeDistribucion[2],
     pipeClientes[2], pipeClientesVIP[2],
     pipeHamRecep[2], pipeVegRecep[2], pipeFritasRecep[2];
@@ -45,6 +49,9 @@ void generarPedidos(Cliente clientes[]) {
 
 int main() {
     pid_t pid[NUM_EMPLOYEES];
+    
+    sem_init(&cola_normal, 0, COLA_CLIENTES);
+    sem_init(&cola_vip, 0, COLA_CLIENTES);
     
     sem_init(&cola_normal, 0, COLA_CLIENTES);
     sem_init(&cola_vip, 0, COLA_CLIENTES);
@@ -119,12 +126,14 @@ int main() {
         pid[i] = fork();
         if (pid[i] < 0) {
             perror("Error al crear proceso Empledos");
+            perror("Error al crear proceso Empledos");
             exit(EXIT_FAILURE);
         }
         if (pid[i] == 0) {
             // Código para cada proceso hijo
             if (i == 0) { // Proceso de Hamburguesas
                 close(pipeHamburguesas[1]);
+                close(pipeHamRecep[0]);
                 close(pipeHamRecep[0]);
                 while (1) {
                     // Preparar hamburguesa
@@ -133,9 +142,12 @@ int main() {
                     printf("Preparando hamburguesa\n");
                     sleep(1);
                     write(pipeHamRecep[1], "H", sizeof(char));
+                    sleep(1);
+                    write(pipeHamRecep[1], "H", sizeof(char));
                 }
             } else if (i == 1) { // Proceso de Menú Vegano
                 close(pipeVegano[1]);
+                close(pipeVegRecep[0]);
                 close(pipeVegRecep[0]);
                 while (1) {
                     // Preparar menú vegano
@@ -144,8 +156,12 @@ int main() {
                     printf("Preparando menú vegano\n");
                     sleep(1);
                     write(pipeVegRecep[1], "V", sizeof(char));
+                    sleep(1);
+                    write(pipeVegRecep[1], "V", sizeof(char));
                 }
             } else if (i == 2) { // Proceso de Papas Fritas 1
+                close(pipeFritas[1]);
+                close(pipeFritasRecep[0]);
                 close(pipeFritas[1]);
                 close(pipeFritasRecep[0]);
                 while (1) {
@@ -153,12 +169,16 @@ int main() {
                     char pedido;
                     read(pipeFritas[0], &pedido, sizeof(char));
                     printf("Preparando papas fritas\n");
+                    sleep(1);
+                    write(pipeFritasRecep[1], "P", sizeof(char));
                     sleep(1);
                     write(pipeFritasRecep[1], "P", sizeof(char));
                 }
             } else if (i == 3) { // Proceso de Papas Fritas 2
                 close(pipeFritas[1]);
                 close(pipeFritasRecep[0]);
+                close(pipeFritas[1]);
+                close(pipeFritasRecep[0]);
                 while (1) {
                     // Preparar papas fritas
                     char pedido;
@@ -166,7 +186,24 @@ int main() {
                     printf("Preparando papas fritas\n");
                     sleep(1);
                     write(pipeFritasRecep[1], "P", sizeof(char));
+                    sleep(1);
+                    write(pipeFritasRecep[1], "P", sizeof(char));
                 }
+            } else if (i == 4) { // Proceso de Distribucion
+                char pedido;
+                close(pipeDistribucion[1]);
+                while (read(pipeClientesVIP[0], &pedido, sizeof(Cliente)) > 0) {
+                    // Hace falta cerrar el del hijo?
+                    for (int j = 0; pedido != '\0'; j++) {
+                        char pedido = clientes[i].pedido[j];
+                        if (pedido == 'H') {
+                            write(pipeHamburguesas[1], &pedido, sizeof(char));
+                        } else if (pedido == 'V') {
+                            write(pipeVegano[1], &pedido, sizeof(char));
+                        } else if (pedido == 'P') {
+                            write(pipeFritas[1], &pedido, sizeof(char));
+                        }
+                    }
             } else if (i == 4) { // Proceso de Distribucion
                 char pedido;
                 close(pipeDistribucion[1]);
@@ -190,8 +227,16 @@ int main() {
 
     // Proceso principal
     // Revisar que se cierran todos
+    // Revisar que se cierran todos
     close(pipeHamburguesas[0]);
     close(pipeVegano[0]);
+    close(pipeFritas[0]);
+    close(pipeDistribucion[0]);
+    close(pipeHamRecep[1]);
+    close(pipeVegRecep[1]);
+    close(pipeFritasRecep[1]);
+    close(pipeClientes[0]);
+    close(pipeClientesVIP[0]);
     close(pipeFritas[0]);
     close(pipeDistribucion[0]);
     close(pipeHamRecep[1]);
