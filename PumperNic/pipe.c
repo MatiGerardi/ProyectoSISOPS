@@ -111,10 +111,12 @@ int main() {
                 if (respuestaH == 'H' && tieneH > 0) {
                     tieneH--;
                     printf("                        [Cliente %d] recibio Ham\n", i);
-                } else if (respuestaV == 'V' && tieneV > 0) {
+                } 
+                if (respuestaV == 'V' && tieneV > 0) {
                     tieneV--;
                     printf("                        [Cliente %d:] recibio Veg\n", i);
-                } else if (respuestaP == 'P' && tieneP > 0) {
+                } 
+                if (respuestaP == 'P' && tieneP > 0) {
                     tieneP--;
                     printf("                        [Cliente %d] recibio Fritas\n", i);
                 }
@@ -192,34 +194,37 @@ int main() {
                 while (1) {
                     if (read(pipeClientesVIP[0], &cliente, sizeof(Cliente)) > 0){
                         printf("    ------ (empleado admin vip)\n");
-                        for (int j = 0; pedido != '\0'; j++) {
-                            pedido = cliente.pedido[j];
-                            printf("    [Admin] distribuye %c\n", pedido);
-                            if (pedido == 'H') {
-                                write(pipeHamburguesas[1], &pedido, sizeof(char));
-                            } else if (pedido == 'V') {
-                                write(pipeVegano[1], &pedido, sizeof(char));
-                            } else if (pedido == 'P') {
-                                write(pipeFritas[1], &pedido, sizeof(char));
+                        pedido = cliente.pedido;
+                        for (int j = 0; pedido[j] != '\0'; j++) {
+                            char comida = cliente.pedido[j];
+                            printf("    [Admin] distribuye %c\n", comida);
+                            if (comida == 'H') {
+                                write(pipeHamburguesas[1], &comida, sizeof(char));
+                            } else if (comida == 'V') {
+                                write(pipeVegano[1], &comida, sizeof(char));
+                            } else if (comida == 'P') {
+                                write(pipeFritas[1], &comida, sizeof(char));
                             }
+                            // quitarle la letra en posicion j al pedido
+
                         }
                         printf("[Admin] Distribuyo un pedido NORMAL\n");
                     } else if (read(pipeClientes[0], &cliente, sizeof(Cliente)) > 0) {
-                        printf("    ------ (empleado admin vip)\n");                    
-                        for (int j = 0; pedido != '\0'; j++) {
-                            pedido = cliente.pedido[j];
-                            printf("    [Admin] distribuye %c\n", pedido);
-                            if (pedido == 'H') {
-                                write(pipeHamburguesas[1], &pedido, sizeof(char));
-                            } else if (pedido == 'V') {
-                                write(pipeVegano[1], &pedido, sizeof(char));
-                            } else if (pedido == 'P') {
-                                write(pipeFritas[1], &pedido, sizeof(char));
+                        printf("    ------ (empleado admin normal)\n");                    
+                        pedido = cliente.pedido;
+                        for (int j = 0; pedido[j] != '\0'; j++) {
+                            char comida = cliente.pedido[j];
+                            printf("    [Admin] distribuye %c\n", comida);
+                            if (comida == 'H') {
+                                write(pipeHamburguesas[1], &comida, sizeof(char));
+                            } else if (comida == 'V') {
+                                write(pipeVegano[1], &comida, sizeof(char));
+                            } else if (comida == 'P') {
+                                write(pipeFritas[1], &comida, sizeof(char));
                             }
                         }
                         printf("[Admin] Distribuyo un pedido NORMAL\n");
                     }
-                    read(pipeClientesVIP[0], &cliente, sizeof(Cliente));
                 }
                 exit(0);
             }
