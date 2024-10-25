@@ -5,6 +5,8 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <string.h>
+#include <semaphore.h>
+#include <time.h>
 
 #define NUM_EMPLOYEES 5
 #define NUM_CLIENTES 2
@@ -20,7 +22,8 @@
 sem_t cola_normal, cola_vip;
 
 typedef struct {
-    char pedido[10];
+    char pedido[4];
+    int esVIP;
 } Cliente;
 
 struct msgbuf {
@@ -67,7 +70,7 @@ int main() {
     sem_init(&cola_vip, 0, COLA_CLIENTES);
 
     Cliente cliente;
-    char pedido;
+    char pedido[4];
 
     // Crear procesos clientes
     for (int i = 0; i < NUM_CLIENTES; i++) {
@@ -83,13 +86,16 @@ int main() {
             
             if (cliente.esVIP && sem_trywait(&cola_vip) == 0){ //hacerlo con IPC_NOWAIT, si tira error es porque la cola esta llena
                 message.type = CLIENTE_VIP;
-                message.text = cliente.pedido;
-                msgnd (msgidClientesVIP, &message, sizeof(char), 0);           
+                strcpy(message.text, cliente.pedido);
+                msgsnd(msgidClientesVIP, &message, sizeof(char), 0); 
+                sem_wait(&cola_vip);          
             } else if (sem_trywait(&cola_normal) == 0) { // SI no es VIP es NORMAL
                 message.type = CLIENTE_COMUN;
-                message.text = cliente.pedido;
+                strcpy(message.text, cliente.pedido);
                 msgsnd(msgidClientes, &message, sizeof(char), 0);
+                sem_wait(&cola_normal);
             } else{
+                cliente.esVIP ? sem_post(&cola_vip) : sem_post(&cola_normal);
                 cliente.esVIP ? printf("        [Cliente %d] se fue. Cola VIP llena\n", i) : printf("        [Cliente %d] se fue. Cola NORMAL llena\n", i);
                 exit(0);
             }
@@ -107,16 +113,15 @@ int main() {
             // Espera a que su pedido este listo
             while (tieneH > 0 || tieneV > 0 || tieneP > 0) {
                 printf("                [Clinete: %d] esperando ...\n", i);
-                char respuestaH, respuestaV, respuestaP;
-                if (tieneH > 0 && msgrcv(msgid, &message, sizeof(char), HAMBURGUESA, 0) != -1) { // con 0 en vez de IPC_NOWAIT se bloquea hasta que llegue un mensaje del tipo
+                if (tieneH > 0 && msgrcv(msgidHamburguesas, &message, sizeof(char), HAMBURGUESA, 0) != -1) { // con 0 en vez de IPC_NOWAIT se bloquea hasta que llegue un mensaje del tipo
                     tieneH--;
                     printf("                        [Cliente %d] recibio Ham\n", i);
                 }
-                if (tieneV > 0 && msgrcv(msgid, &message, sizeof(char), VEGANO, 0) != -1) {
+                if (tieneV > 0 && msgrcv(msgidVegano, &message, sizeof(char), VEGANO, 0) != -1) {
                     tieneV--;
                     printf("                        [Cliente %d:] recibio Veg\n", i);
                 }
-                if (tieneP > 0 && msgrcv(msgid, &message, sizeof(char), PAPAS_FRITAS, 0) != -1) {
+                if (tieneP > 0 && msgrcv(msgidFritas, &message, sizeof(char), PAPAS_FRITAS, 0) != -1) {
                     tieneP--;
                     printf("                        [Cliente %d] recibio Fritas\n", i);
                 }
@@ -141,8 +146,8 @@ int main() {
                         printf("    [Empleado 1] Preparando hamburguesa\n");
                         fflush(stdout);
                         //sleep(1);
-                        message.mtype = HAMBURGUESA;
-                        message.text = 'H';
+                        message.type = HAMBURGUESA;
+                        message.text[0] = 'H';
                         msgsnd(msgidDistribucion, &message, sizeof(char), 0);
                         
                     }
@@ -153,8 +158,8 @@ int main() {
                         printf("    [Empleado 2] Preparando vegano\n");
                         fflush(stdout);
                         //sleep(1);
-                        message.mtype = VEGANO;
-                        message.text = 'V';
+                        message.type = VEGANO;
+                        message.text[0] = 'V';
                         msgsnd(msgidDistribucion, &message, sizeof(char), 0);
                     }
                 }
@@ -164,8 +169,8 @@ int main() {
                         printf("    [Empleado 3] Preparando papas fritas\n");
                         fflush(stdout);
                         //sleep(1);
-                        message.mtype = PAPAS_FRITAS;
-                        message.text = 'P';
+                        message.type = PAPAS_FRITAS;
+                        message.text[0] = 'P';
                         msgsnd(msgidDistribucion, &message, sizeof(char), 0);
                     }
                 }
@@ -174,37 +179,37 @@ int main() {
                 while (1) {
                     if (msgrcv(msgidClientesVIP, &message, sizeof(char), CLIENTE_VIP, 0) != -1) {
                         printf("    ------ (empleado admin vip)\n");
-                        pedido = message.text;
+                        strcpy(pedido, message.text);
                         for (int j = 0; pedido[j] != '\0'; j++) {
                             char comida = pedido[j];
                             printf("    [Admin] distribuye %c\n", comida);
                             if (comida == 'H') {
-                                message.text = 'H';
+                                message.text[0] = 'H';
                                 msgsnd(msgidHamburguesas, &message, sizeof(char), 0);
-                            } else if (buf.mtext[0] == 'V') {
-                                message.text = 'V';
+                            } else if (comida == 'V') {
+                                message.text[0] = 'V';
                                 msgsnd(msgidVegano, &message, sizeof(char), 0);
-                            } else if (buf.mtext[0] == 'P') {
-                                message.text = 'P';
-                                msgsnd(msgidFritas, &message, sizeof(char) 0);
+                            } else if (comida == 'P') {
+                                message.text[0] = 'P';
+                                msgsnd(msgidFritas, &message, sizeof(char), 0);
                             }
                         }
                         printf("[Admin] Distribuyo un pedido VIP\n");
                     } else if (msgrcv(msgidClientesVIP, &message, sizeof(char), CLIENTE_VIP, 0) != -1) {
                         printf("    ------ (empleado admin normal)\n");
-                        pedido = message.text;
+                        strcpy(pedido, message.text);
                         for (int j = 0; pedido[j] != '\0'; j++) {
                             char comida = pedido[j];
                             printf("    [Admin] distribuye %c\n", comida);
                             if (comida == 'H') {
-                                message.text = 'H';
+                                message.text[0] = 'H';
                                 msgsnd(msgidHamburguesas, &message, sizeof(char), 0);
-                            } else if (buf.mtext[0] == 'V') {
-                                message.text = 'V';
+                            } else if (comida == 'V') {
+                                message.text[0] = 'V';
                                 msgsnd(msgidVegano, &message, sizeof(char), 0);
-                            } else if (buf.mtext[0] == 'P') {
-                                message.text = 'P';
-                                msgsnd(msgidFritas, &message, sizeof(char) 0);
+                            } else if (comida == 'P') {
+                                message.text[0] = 'P';
+                                msgsnd(msgidFritas, &message, sizeof(char), 0);
                             }
                         }
                         printf("[Admin] Distribuyo un pedido NORMAL\n");

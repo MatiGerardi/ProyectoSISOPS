@@ -1,0 +1,124 @@
+============== EXPLICACION ==============
+buffer |_|_|_|_|
+*Uno o mas productores generan y situan datos en un buffer
+*El unico consumidor saca uno a uno los elementos del buffer
+*Seccion critica: uso del buffer
+    su el productor esta escribiendo en el buffer
+    el consumidor no puede tener acceso al msg_buffer
+    y biceversa
+*El produtor pude ir mas lento o mas rapido que el consumidor
+*El consumirdo tambien va a su ritmo 
+    pero si el buffer esta vacio espera a que haya elementos 
+    en el buffer
+*Por lo tanto:
+    el consumidor debe asegurar de que el productor este adelante
+
+  buffer  |_|consumidor|_|productor| ==> (consumidor < productor)
+============== SEMAFOROS BINARIOS ==============
+int m, n;
+SemaphoreBin s;
+SemaphoreBin retraso;
+
+Productor (){
+    while (forever){
+        producir;
+        waitB(s);
+        afiadir;
+        n++;
+        if (n==l) signalB(retraso);
+        signalB(s);
+    }
+}
+
+Consumidor ( ){
+    waitB(retraso);
+    while(forever){
+        waitB(s);
+        tomar;
+        n--;
+        m = n;
+        signalB(s);
+        consumir;
+        if (m==O) waitB(retraso) ;
+    }
+}
+
+main (){
+    n = 0;
+    initbsem(s,1); // cuida la seccion critica (buffer)
+    initbsem(retraso, 0); // si el buffer esta vacio el consumidor no puede tomar elementos
+    cobegin{
+        Productor();
+        Consumidor();
+    }
+}
+
+============== SEMAFOROS CONTADORES ==============
+Semaphore n;
+Semaphore s;
+
+Productor (){
+    while (forever){
+        producir;
+        wait(s);
+        afiadir;
+        signal(s);
+        signalB(n);
+    }
+}
+
+Consumidor ( ){
+    while(forever){
+        wait(n);
+        wait(s);
+        tomar;
+        signal(s);
+        consumir;
+    }
+}
+
+main (){
+    initbsem(s,1); // cuida la seccion critica (buffer)
+    initbsem(n, 0); // si el buffer esta vacio el consumidor no puede tomar elementos
+    cobegin{
+        Productor();
+        Consumidor();
+    }
+}
+---------------
+-- buffer limitado a TAMAÑO y circular
+Semaphore n;
+Semaphore s;
+semaphore e;
+
+Productor (){
+    while (forever){
+        producir;
+        wait(e);
+        wait(s);
+        afiadir;
+        signal(s);
+        signalB(n);
+    }
+}
+
+Consumidor ( ){
+    while(forever){
+        wait(n);
+        wait(s);
+        tomar;
+        signal(s);
+        signal(e);
+        consumir;
+    }
+}
+
+main (){
+    initbsem(s,1); // cuida la seccion critica (buffer)
+    initbsem(n, 0); // si el buffer esta vacio el consumidor no puede tomar elementos
+    initbsem(e, TAMAÑO); // si llega a 0 el buffer esta lleno
+    cobegin{
+        Productor();
+        Consumidor();
+    }
+}

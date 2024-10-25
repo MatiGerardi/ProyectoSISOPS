@@ -1,0 +1,58 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdlib.h>
+#include <string.h>
+ 
+
+int main() {
+    int pipefd[2];     // Array para la tubería
+    pid_t pid;         // Variable para el fork
+    char msg1[] = "Holiz!";
+ 
+    // Crear la tubería
+    if (pipe(pipefd) == -1) {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+ 
+    // Crear proceso hijo
+    pid = fork();
+    if (pid == -1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
+ 
+ 
+    if (pid == 0) { // Proceso hijo
+        close(pipefd[1]); // Cerrar extremo de escritura de la tubería
+ 
+        // Leer desde la tubería
+        while (read(pipefd[0], msg1, sizeof(msg1)) > 0) {
+            printf("Hijo leyó: %s\n", msg1);
+            fflush(stdout); // Para que imprima enseguida
+        }
+ 
+        //close(pipefd[0]); // Cerrar extremo de lectura de la tubería
+        exit(0);
+    } else { // Proceso padre
+        close(pipefd[0]); // Cerrar extremo de lectura de la tubería
+ 
+        // IMPORTANTE RESPETAR EL TAMAÑO SIMPRE (en el read y en el write)
+        // SI LOS MENSAJES SON DISTINTOS O DE DISTINTA LOGITUD
+        // ES TAMAÑO SE VUELVE VARIABLE Y NO SE BIEN COMO HACER ESO
+        write(pipefd[1], msg1, sizeof(msg1));
+        write(pipefd[1], msg1, sizeof(msg1));
+        write(pipefd[1], msg1, sizeof(msg1));
+ 
+        close(pipefd[1]); // Cerrar extremo de escritura de la tubería
+ 
+        // Esperar a que el hijo termine
+        wait(NULL);
+    }
+ 
+    return 0;
+}
+
+Salida:
+Hijo leyo: Holiz! (x3)

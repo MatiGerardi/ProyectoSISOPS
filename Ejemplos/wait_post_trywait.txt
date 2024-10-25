@@ -1,0 +1,54 @@
+#include <stdio.h>
+#include <semaphore.h>
+ 
+int main (){
+	sem_t sem;
+	sem_init(&sem, 0 ,1);
+	int value;
+ 
+	sem_getvalue(&sem, &value);	
+	printf("original: %d\n",value);
+ 
+	sem_wait(&sem);
+	sem_getvalue(&sem, &value);
+	printf("wait: %d\n",value);
+ 
+	sem_post(&sem);
+	sem_getvalue(&sem, &value);	
+	printf("post: %d\n",value);
+ 
+ 
+	printf("_________ANTES DEL TRYWAIT_________\n");
+ 
+	printf("original: %d\n",value);
+ 
+	// trywait 0
+	printf("== trywait 0 ==\n");
+	sem_getvalue(&sem, &value);	
+	if(sem_trywait(&sem) == 0) printf("trywait0: %d\n",value);
+ 
+	sem_getvalue(&sem, &value);
+	printf("	==> luego del tryait: %d\n",value);
+ 
+ 
+	// trywait 1
+	printf("\n == trywait 1 ==\n");
+	if(sem_trywait(&sem) == 0) {
+	} else {
+		sem_getvalue(&sem, &value);
+		printf("	(1)no entra xq value: %d\n",value);
+ 
+		sem_post(&sem);
+		sem_getvalue(&sem, &value);
+		printf("	(post): %d\n",value);
+	}
+ 
+	// trywait 2
+	printf("\n == trywait 2 ==\n");
+	if(sem_trywait(&sem) == 0) {
+		sem_getvalue(&sem, &value);
+		printf("(entra)trywait2: %d\n",value);
+	}
+ 
+	return 0;
+}

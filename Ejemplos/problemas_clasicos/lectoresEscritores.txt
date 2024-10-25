@@ -1,0 +1,98 @@
+============== EXPLICACION ==============
+Existe un area compartida entre procesos
+    donde hay procesos que solo leen y
+    hay otros que solo escriben
+Escritor --> Area --> Lectores
+Cualquier numero de lectores puede leer el area de datos simultaneamente
+Si un escritor esta accediendo al archivo, ningun lector puede leer
+Solo escritor puede escribir al mismo tiempo
+============== SEMAFOROS ==============
+// prioridad lectores
+// un escritor solo puede escribir si no hay escritores leyendo
+int contlect = 0;
+semaphore x, essem;
+
+Lesctor(){
+    while(forever){
+        wait(x);
+        contlect++;
+        if(contlect == 1) wait(essem); // no permitir que los escritores escribar
+        signal(x);
+        LEER_UNIDAD;
+        wait(x);
+        contlect--;
+        if(contlect == 0) signal(essem); // si no hay mas escritores avisa a los escritores
+        signal(x);
+    }
+}
+
+Escritor(){
+    while(forever){
+        wait(essem);
+        ESCRIBIR_UNIDAD;
+        signal(essem);
+    }
+}
+
+main(){
+    contlect = 0;
+    initsem(x,1); // protege seccion critica para incrementar, decrementar y comparar <contlect>
+    initsem(essem,1); // si un escritor puede o no escribir
+    cobeging{
+        Lector(); ... Lector();
+        Escritor(); ... Escritor();
+    }
+}
+
+----------------------------
+// prioridad escritores
+// un escritor solicita escbir por lo que ningun lector puede leer
+int contlect = 0, contesc = 0;
+semaphore x, y, z, essem, lsem;
+
+Lesctor(){
+    while(forever){
+        wait(z); // con este se evita que un escritor se quede por detras de una cantidad de lectores
+            wait(lsem); // aca solo se debe bloquear un lector, por eso wait(z)
+                wait(x);
+                    contlect++;
+                    if(contlect == 1) wait(essem); // no permitir que los escritores escribar
+                signal(x);
+            signal(lsem);
+        signal(z);
+        LEER_UNIDAD;
+        wait(x);
+            contlect--;
+            if(contlect == 0) signal(essem); // si hay un escritor esperando pueda escribir
+        signal(x);
+    }
+}
+
+Escritor(){
+    while(forever){
+        wait(y);
+            contesc++;
+            if(contesc == 1) wait(lsem); // si hay un lector no pueda leer
+        signal(y);
+        wait(essem);
+            ESCRIBIR_UNIDAD;
+        signal(essem);
+        wait(y);
+            contesc--;
+            if(contesc == 0) signal(lsem); // si hay mas escritores avisa a los lectores que pueden escribir
+        signal(y);
+    }
+}
+
+main(){
+    contlect = 0;
+    initsem(x,1); // para poder incrementar, decrementar y comparar <contlect>
+    initsem(y,1); // para poder incrementar, decrementar y comparar <contesc>
+    initsem(z,1); // controlar prioridad a los escritores
+    initsem(essem,1); // si un escritor puede o no escribir
+    initsem(lsem,1);
+    cobeging{
+        Lector(); ... Lector();
+        Escritor(); ... Escritor();
+    }
+}

@@ -8,8 +8,9 @@
 
 
 #define NUM_EMPLOYEES 5
-#define NUM_CLIENTES 2
+#define NUM_CLIENTES 10
 #define COLA_CLIENTES 10
+#define TAMAÑO_PEDIDO 4
 
 
 // Esta bien?
@@ -17,7 +18,7 @@ sem_t cola_normal, cola_vip;
 
 
 typedef struct {
-    char pedido[4]; // Combinación de 'H', 'V', 'P'
+    char pedido[TAMAÑO_PEDIDO]; // Combinación de 'H', 'V', 'P'
     int esVIP;
 } Cliente;
 
@@ -59,6 +60,8 @@ int main() {
     pipe(pipeClientesVIP);
     
     Cliente cliente;
+    //char pedido[TAMAÑO_PEDIDO];
+    char comida;
 
 
     // Crear procesos clientes
@@ -73,21 +76,17 @@ int main() {
            
             printf("[Cliente %d] Pedido: %s %s\n", i, cliente.pedido, cliente.esVIP ? "(VIP)" : "");
 
-
             // Se mete en su cola correspondiente
             if (cliente.esVIP && sem_trywait(&cola_vip) == 0) { // Si es VIP
-                sem_wait(&cola_vip);
                 close(pipeClientesVIP[0]);
                 write(pipeClientesVIP[1], &cliente, sizeof(Cliente));
             } else if (sem_trywait(&cola_normal) == 0) { // SI no es VIP es NORMAL
-                sem_wait(&cola_normal);
                 close(pipeClientes[0]);
                 write(pipeClientes[1], &cliente, sizeof(Cliente));
             } else{
                 cliente.esVIP ? printf("        [Cliente %d] se fue. Cola VIP llena\n", i) : printf("        [Cliente %d] se fue. Cola NORMAL llena\n", i);
                 exit(0);
             }
-
 
             // Espera su pedido
             // Verifica que tiene su pedido para luego esperar cada cosa
@@ -97,30 +96,26 @@ int main() {
                 else if (cliente.pedido[j] == 'V') tieneV++;
                 else if (cliente.pedido[j] == 'P') tieneP++;
             }
-            //printf("El cliente: %d tiene: H: %d, V: %d, P: %d <<<<<<<<<<<<<<<\n", i,tieneH, tieneV, tieneP);
-       
+     
             // Espera a que su pedido este listo
             close(pipeHamRecep[1]); close(pipeVegRecep[1]); close(pipeFritasRecep[1]);
             // tendria que ser un read solo creo--------
             while (tieneH > 0 || tieneV > 0 || tieneP > 0) {
-                printf("                [Clinete: %d] esperando ...\n", i);
+                //printf("                [Clinete: %d] esperando ...\n", i);
                 char respuestaH, respuestaV, respuestaP;
-                read(pipeHamRecep[0], &respuestaH, sizeof(char));
-                read(pipeHamRecep[0], &respuestaV, sizeof(char));
-                read(pipeHamRecep[0], &respuestaP, sizeof(char));
-                if (respuestaH == 'H' && tieneH > 0) {
+                if (tieneH > 0 && read(pipeHamRecep[0], &respuestaH, sizeof(char)) > 0) {
                     tieneH--;
-                    printf("                        [Cliente %d] recibio Ham\n", i);
-                } 
-                if (respuestaV == 'V' && tieneV > 0) {
-                    tieneV--;
-                    printf("                        [Cliente %d:] recibio Veg\n", i);
-                } 
-                if (respuestaP == 'P' && tieneP > 0) {
-                    tieneP--;
-                    printf("                        [Cliente %d] recibio Fritas\n", i);
+                    //~ printf("                        [Cliente %d] recibio Ham\n", i);
                 }
-                sleep(2);
+                if (tieneV > 0 && read(pipeVegRecep[0], &respuestaV, sizeof(char)) > 0) {
+                    tieneV--;
+                    //~ printf("                        [Cliente %d:] recibio Veg\n", i);
+                }
+                if (tieneP > 0 && read(pipeFritasRecep[0], &respuestaP, sizeof(char)) > 0) {
+                    tieneP--;
+                    //~ printf("                        [Cliente %d] recibio Fritas\n", i);
+                }
+                sleep(1);
             }
             cliente.esVIP ? sem_post(&cola_vip) : sem_post(&cola_normal);
             printf("                        >>>>>>[Cliente %d] se fue con su pedido<<<<<<\n", i);
@@ -128,7 +123,6 @@ int main() {
         }
     }
     
-    char pedido;
     // Crear procesos empleados
     for (int i = 0; i < NUM_EMPLOYEES; i++) {
         pid = fork();
@@ -139,65 +133,63 @@ int main() {
         if (pid == 0) {
             // Código para cada proceso hijo
             if (i == 0) { // Proceso de Hamburguesas
-                printf("    -- se crea Empleado 0\n");
+                //~ printf("-- se crea Empleado 0\n");
                 close(pipeHamburguesas[1]);
                 while (1) {
                     // Preparar hamburguesa
-                    printf("    ------ (empleado hamburguesas)\n");
-                    read(pipeHamburguesas[0], &pedido, sizeof(char));
-                    printf("    [Empleado 0] Preparando hamburguesa\n");
+                    //printf("    ------ (entra empleado hamburguesas)\n");
+                    read(pipeHamburguesas[0], &comida, sizeof(char));
+                    //~ printf("            [Empleado 0] Preparando hamburguesa\n");
                     fflush(stdout);
                     //sleep(1);
                     write(pipeHamRecep[1], "H", sizeof(char));
                 }
             } else if (i == 1) { // Proceso de Menú Vegano
-                printf("    -- se crea Empleado 1\n");
+                //~ printf("-- se crea Empleado 1\n");
                 close(pipeVegano[1]);
                 while (1) {
                     // Preparar menú vegano
-                    printf("    ------ (empleado vegano)\n");
-                    read(pipeVegano[0], &pedido, sizeof(char));
-                    printf("    [Empleado 1] Preparando menú vegano\n");
+                    //printf("    ------ (entra empleado vegano)\n");
+                    read(pipeVegano[0], &comida, sizeof(char));
+                    //~ printf("            [Empleado 1] Preparando menú vegano\n");
                     fflush(stdout);
                     //sleep(1);
                     write(pipeVegRecep[1], "V", sizeof(char));
                 }
-                exit(0);
             } else if (i == 2) { // Proceso de Papas Fritas 1
-                printf("    -- se crea Empleado 2\n");
+                //~ printf("-- se crea Empleado 2\n");
                 close(pipeFritas[1]);
                 while (1) {
                     // Preparar papas fritas
-                    printf("    ------ (empleado fritas 1)\n");
-                    read(pipeFritas[0], &pedido, sizeof(char));
-                    printf("    [Empleado 2] Preparando papas fritas\n");
+                    //printf("    ------ (entra empleado fritas 2)\n");
+                    read(pipeFritas[0], &comida, sizeof(char));
+                    //~ printf("            [Empleado 2] Preparando papas fritas\n");
                     fflush(stdout);
                     //sleep(1);
                     write(pipeFritasRecep[1], "P", sizeof(char));
                 }
             } else if (i == 3) { // Proceso de Papas Fritas 2
-                printf("    -- se crea Empleado 3\n");
+                //~ printf("-- se crea Empleado 3\n");
                 close(pipeFritas[1]);
                 while (1) {
                     // Preparar papas fritas
-                    printf("    ------ (empleado fritas 2)\n");
-                    read(pipeFritas[0], &pedido, sizeof(char));
-                    printf("    [Empleado 3] Preparando papas fritas\n");
+                    //printf("    ------ (entra empleado fritas 3)\n");
+                    read(pipeFritas[0], &comida, sizeof(char));
+                    //~ printf("            [Empleado 3] Preparando papas fritas\n");
                     fflush(stdout);
                     //sleep(1);
                     write(pipeFritasRecep[1], "P", sizeof(char));
                 }
             } else if (i == 4) { // Proceso de Distribucion
-                printf("    -- se crea Empleado 4\n");
+                //~ printf("-- se crea Empleado 4\n");
                 close(pipeClientesVIP[1]); close(pipeClientes[1]);
                 close(pipeHamburguesas[0]); close(pipeVegano[0]); close(pipeFritas[0]);
                 while (1) {
-                    if (read(pipeClientesVIP[0], &cliente, sizeof(Cliente)) > 0){
-                        printf("    ------ (empleado admin vip)\n");
-                        pedido = cliente.pedido;
-                        for (int j = 0; pedido[j] != '\0'; j++) {
+                    while(read(pipeClientesVIP[0], &cliente, sizeof(Cliente)) > 0){
+                        //~ printf("------ (entra empleado admin vip)\n");
+                        //~ printf("[ADMIN] tiene el pedido: %s\n", cliente.pedido);
+                        for (int j = 0; cliente.pedido[j] != '\0'; j++) {
                             char comida = cliente.pedido[j];
-                            printf("    [Admin] distribuye %c\n", comida);
                             if (comida == 'H') {
                                 write(pipeHamburguesas[1], &comida, sizeof(char));
                             } else if (comida == 'V') {
@@ -205,16 +197,15 @@ int main() {
                             } else if (comida == 'P') {
                                 write(pipeFritas[1], &comida, sizeof(char));
                             }
-                            // quitarle la letra en posicion j al pedido
-
+                            //~ printf("    [Admin] distribuye %c\n", comida);
                         }
-                        printf("[Admin] Distribuyo un pedido NORMAL\n");
-                    } else if (read(pipeClientes[0], &cliente, sizeof(Cliente)) > 0) {
-                        printf("    ------ (empleado admin normal)\n");                    
-                        pedido = cliente.pedido;
-                        for (int j = 0; pedido[j] != '\0'; j++) {
+                        //~ printf("        [Admin] Distribuyo un pedido VIP\n");
+                    } /*else if*/
+                    while (read(pipeClientes[0], &cliente, sizeof(Cliente)) > 0) {
+                        //~ printf("------ (entra empleado admin normal)\n");
+                        //~ printf("[ADMIN] tiene el pedido: %s\n", cliente.pedido);
+                        for (int j = 0; cliente.pedido[j] != '\0'; j++) {
                             char comida = cliente.pedido[j];
-                            printf("    [Admin] distribuye %c\n", comida);
                             if (comida == 'H') {
                                 write(pipeHamburguesas[1], &comida, sizeof(char));
                             } else if (comida == 'V') {
@@ -222,8 +213,9 @@ int main() {
                             } else if (comida == 'P') {
                                 write(pipeFritas[1], &comida, sizeof(char));
                             }
-                        }
-                        printf("[Admin] Distribuyo un pedido NORMAL\n");
+                            //~ printf("    [Admin] distribuye %c\n", comida);
+                        }                            
+                        //~ printf("        [Admin] Distribuyo un pedido NORMAL\n");
                     }
                 }
                 exit(0);
