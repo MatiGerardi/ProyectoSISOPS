@@ -5,17 +5,12 @@
 #include <time.h>
 #include <pthread.h>
 #include <semaphore.h>
-
+#include <fcntl.h>
 
 #define NUM_EMPLOYEES 5
-#define NUM_CLIENTES 5
-#define COLA_CLIENTES 10
+#define NUM_CLIENTES 10
+#define COLA_CLIENTES 1
 #define TAMAÑO_PEDIDO 4
-
-
-// Esta bien?
-sem_t cola_normal, cola_vip;
-
 
 typedef struct {
     char pedido[TAMAÑO_PEDIDO]; // Combinación de 'H', 'V', 'P'
@@ -44,8 +39,22 @@ int main() {
     pid_t pid;
     pid_t pidCli;
    
-    sem_init(&cola_normal, 0, COLA_CLIENTES);
-    sem_init(&cola_vip, 0, COLA_CLIENTES);
+    //~ sem_init(&cola_normal, 0, COLA_CLIENTES);
+    //~ sem_init(&cola_vip, 0, COLA_CLIENTES);
+    sem_t *cola_normal, *cola_vip;
+    
+    sem_unlink("/cola_normal");
+    sem_unlink("/cola_vip");
+    
+    cola_normal= sem_open("/cola_normal", O_CREAT, 0644, COLA_CLIENTES);
+    cola_vip = sem_open("/cola_vip", O_CREAT, 0644, COLA_CLIENTES);
+    
+                            //~ int value;
+                //~ sem_getvalue(cola_vip, &value);
+                //~ printf("capacidad VIP: %d\n", value);
+                
+                //~ sem_getvalue(cola_normal, &value);
+                //~ printf("capacidad NORMAL: %d\n", value);
 
 
     // Crear pipes
@@ -60,8 +69,8 @@ int main() {
     pipe(pipeClientesVIP);
     
     // Configurar los pipes en modo no bloqueante
-    fcntl(pipeCLienteVIP[0], F_SETFL, O_NONBLOCK);
-    fcntl(pipeCLiente[0], F_SETFL, O_NONBLOCK);
+    fcntl(pipeClientesVIP[0], F_SETFL, O_NONBLOCK);
+    fcntl(pipeClientes[0], F_SETFL, O_NONBLOCK);
     
     Cliente cliente;
     //char pedido[TAMAÑO_PEDIDO];
@@ -79,16 +88,28 @@ int main() {
             generarPedidos1(&cliente);
            
             printf("[Cliente %d] Pedido: %s %s\n", i, cliente.pedido, cliente.esVIP ? "(VIP)" : "");
+            
+                        int value1, value2;
+                        sem_getvalue(cola_vip, &value1);
+                        sem_getvalue(cola_normal, &value2);
+                printf("                                    [%d]capacidad VIP: %d,  capacidad NORMAL: %d\n", i, value1, value2);
+
 
             // Se mete en su cola correspondiente
-            if (cliente.esVIP && sem_trywait(&cola_vip) == 0) { // Si es VIP
+            if (cliente.esVIP && sem_trywait(cola_vip) == 0) { // Si es VIP
+                //~ int value;
+                //~ sem_getvalue(cola_vip, &value);
+                //~ printf("[Cliente %d] wait(): %d\n", i, value);
                 close(pipeClientesVIP[0]);
                 write(pipeClientesVIP[1], &cliente, sizeof(Cliente));
-            } else if (sem_trywait(&cola_normal) == 0) { // SI no es VIP es NORMAL
+            } else if (sem_trywait(cola_normal) == 0) { // SI no es VIP es NORMAL
+                //~ int value;
+                //~ sem_getvalue(cola_normal, &value);
+                //~ printf("[Cliente %d] wait(): %d\n", i, value);
                 close(pipeClientes[0]);
                 write(pipeClientes[1], &cliente, sizeof(Cliente));
             } else{
-                cliente.esVIP ? printf("        [Cliente %d] se fue. Cola VIP llena\n", i) : printf("        [Cliente %d] se fue. Cola NORMAL llena\n", i);
+                cliente.esVIP ? printf("        ====> [Cliente %d] se fue. Cola VIP llena\n", i) : printf("        ====> [Cliente %d] se fue. Cola NORMAL llena\n", i);
                 exit(0);
             }
 
@@ -106,6 +127,7 @@ int main() {
             // tendria que ser un read solo creo--------
             while (tieneH > 0 || tieneV > 0 || tieneP > 0) {
                 //printf("                [Clinete: %d] esperando ...\n", i);
+                sleep(2);
                 char respuestaH, respuestaV, respuestaP;
                 if (tieneH > 0 && read(pipeHamRecep[0], &respuestaH, sizeof(char)) > 0) {
                     tieneH--;
@@ -119,9 +141,9 @@ int main() {
                     tieneP--;
                     //~ printf("                        [Cliente %d] recibio Fritas\n", i);
                 }
-                sleep(1);
+                //~ sleep(1);
             }
-            cliente.esVIP ? sem_post(&cola_vip) : sem_post(&cola_normal);
+            cliente.esVIP ? sem_post(cola_vip) : sem_post(cola_normal);
             printf("                        >>>>>>[Cliente %d] se fue con su pedido<<<<<<\n", i);
             exit(0);
         }
@@ -145,7 +167,7 @@ int main() {
                     read(pipeHamburguesas[0], &comida, sizeof(char));
                     //~ printf("            [Empleado 0] Preparando hamburguesa\n");
                     fflush(stdout);
-                    //sleep(1);
+                    sleep(1);
                     write(pipeHamRecep[1], "H", sizeof(char));
                 }
             } else if (i == 1) { // Proceso de Menú Vegano
@@ -157,7 +179,7 @@ int main() {
                     read(pipeVegano[0], &comida, sizeof(char));
                     //~ printf("            [Empleado 1] Preparando menú vegano\n");
                     fflush(stdout);
-                    //sleep(1);
+                    sleep(1);
                     write(pipeVegRecep[1], "V", sizeof(char));
                 }
             } else if (i == 2) { // Proceso de Papas Fritas 1
@@ -169,7 +191,7 @@ int main() {
                     read(pipeFritas[0], &comida, sizeof(char));
                     //~ printf("            [Empleado 2] Preparando papas fritas\n");
                     fflush(stdout);
-                    //sleep(1);
+                    sleep(1);
                     write(pipeFritasRecep[1], "P", sizeof(char));
                 }
             } else if (i == 3) { // Proceso de Papas Fritas 2
@@ -181,7 +203,7 @@ int main() {
                     read(pipeFritas[0], &comida, sizeof(char));
                     //~ printf("            [Empleado 3] Preparando papas fritas\n");
                     fflush(stdout);
-                    //sleep(1);
+                    sleep(1);
                     write(pipeFritasRecep[1], "P", sizeof(char));
                 }
             } else if (i == 4) { // Proceso de Distribucion
@@ -232,7 +254,11 @@ int main() {
     for (int i = 0; i < NUM_EMPLOYEES + NUM_CLIENTES; i++) {
         wait(NULL);
     }
-
+    
+    sem_close(cola_normal);
+    sem_close(cola_vip);
+    sem_unlink("/cola_normal");
+    sem_unlink("/cola_vip");
 
     return 0;
 }
