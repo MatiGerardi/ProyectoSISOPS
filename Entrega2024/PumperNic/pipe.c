@@ -8,7 +8,7 @@
 
 
 #define NUM_EMPLOYEES 5
-#define NUM_CLIENTES 10
+#define NUM_CLIENTES 5
 #define COLA_CLIENTES 10
 #define TAMAÑO_PEDIDO 4
 
@@ -58,6 +58,10 @@ int main() {
     pipe(pipeFritasRecep);
     pipe(pipeClientes);
     pipe(pipeClientesVIP);
+    
+    // Configurar los pipes en modo no bloqueante
+    fcntl(pipeCLienteVIP[0], F_SETFL, O_NONBLOCK);
+    fcntl(pipeCLiente[0], F_SETFL, O_NONBLOCK);
     
     Cliente cliente;
     //char pedido[TAMAÑO_PEDIDO];
@@ -186,8 +190,8 @@ int main() {
                 close(pipeHamburguesas[0]); close(pipeVegano[0]); close(pipeFritas[0]);
                 while (1) {
                     while(read(pipeClientesVIP[0], &cliente, sizeof(Cliente)) > 0){
-                        //~ printf("------ (entra empleado admin vip)\n");
-                        //~ printf("[ADMIN] tiene el pedido: %s\n", cliente.pedido);
+                        printf("------ (entra empleado admin vip)\n");
+                        printf("[ADMIN] tiene el pedido: %s\n", cliente.pedido);
                         for (int j = 0; cliente.pedido[j] != '\0'; j++) {
                             char comida = cliente.pedido[j];
                             if (comida == 'H') {
@@ -199,11 +203,11 @@ int main() {
                             }
                             //~ printf("    [Admin] distribuye %c\n", comida);
                         }
-                        //~ printf("        [Admin] Distribuyo un pedido VIP\n");
+                        printf("        [Admin] Distribuyo un pedido VIP\n");
                     } /*else if*/
-                    while (read(pipeClientes[0], &cliente, sizeof(Cliente)) > 0) {
-                        //~ printf("------ (entra empleado admin normal)\n");
-                        //~ printf("[ADMIN] tiene el pedido: %s\n", cliente.pedido);
+                    if (read(pipeClientes[0], &cliente, sizeof(Cliente)) > 0) {
+                        printf("------ (entra empleado admin normal)\n");
+                        printf("[ADMIN] tiene el pedido: %s\n", cliente.pedido);
                         for (int j = 0; cliente.pedido[j] != '\0'; j++) {
                             char comida = cliente.pedido[j];
                             if (comida == 'H') {

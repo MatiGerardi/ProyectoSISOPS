@@ -122,3 +122,35 @@ main (){
         Consumidor();
     }
 }
+============== MENSAJES BLOQUEANTES ==============
+-- buffer acotado
+#define capacidad capacidad_buffer
+mensaje null // mensaje vacio
+
+Productor (){
+    mensaje msjp;
+    while (forever){
+        receive(puede_producir, msjp); // bloqueante si no hay mensajes
+        msjp = producir();
+        send(puede_consumir, msjp);
+    }
+}
+
+Consumidor ( ){
+    mensaje msjc;
+    while(forever){
+        receive(puede_producir, msjc); // bloqueante
+        consumir(msjc);
+        send(puede_consumir, msjc);
+    }
+}
+
+main (){
+    crear_buzon(puede_producir);
+    crear_buzon(puede_consumir);
+    for (i=0; i<capacidad_buffer; i++)
+        send(puede_producir, null);
+    cobegin{
+        Productor();Consumidor();
+    }
+}

@@ -96,3 +96,73 @@ main(){
         Escritor(); ... Escritor();
     }
 }
+============== MENSAJES ==============
+// prioridad escritores
+// hay buzones de solicitud de lectura y de escritura y de terminado
+// cada lector y consumidor tiene su buzon y hay un Controlador
+int contlect = 0;
+semaphore x, essem;
+
+Lesctor_i(){
+    mensaje msjl;
+    while(forever){
+        msjl = i;
+        send(solicitud_lectura, msjl); //no bloqueante
+        receive(buzon_i, msjl); //bloqueante (una vez que el controlador lo habilita puede leer)
+        LEER_UNIDAD;
+        msjl = i;
+        send(terminado, msjl);
+    }
+}
+
+Escritor_j(){
+    mensaje msjl;
+    while(forever){
+        msjl = j;
+        send(solicitud_escritura, msjl); // no bloqueante
+        receive(buzon_j, msjl); // bloqueante (espera la autorizacion del controlador)
+        ESCRIBIR_UNIDAD;
+        msjl = j;
+        send(terminado, msjl);
+    }
+}
+
+Controlador(){
+    mensaje msj;
+    int cont = 100;
+    while (forever){
+        if(cont > 0){
+            if(!vacio(terminado)) { // YA HAY QUIENES TERMINARON
+                receive(terminado, msj);
+                cont++;
+            } else if (!vacio(solicitud_escritura)){ // HAY QUIEN
+                receive(solicitud_escritura, msj); // QUIERE ESCRIBIR
+                escritor.id := msj.id; // ESCRIBIR
+                cont = cont - 100;
+            } else if(!vacio(solicitud_lectura)){ // HAY QUIEN QUIERE
+                receive(solicitud_lectura, msj); // LEER
+                cont--;
+                send(msj.id, "OK");
+            }
+        }
+        if (cont == 0){
+            send(escribir.id, "OK"); //CONCEDER ESCRITURA
+            receive(terminado, msj); // ESPERO A QUE TERMINE
+            cont = 100; // DE ESCRIBIR
+        }
+        while(cont < 0){ // SI HAY LECTORES PENDIENTES DE TERMINAR
+            receive(terminado, msj); // LOS ESPERA
+            cont++;
+        }
+    }
+}
+
+main(){
+    contlect = 0;
+    initsem(x,1); // protege seccion critica para incrementar, decrementar y comparar <contlect>
+    initsem(essem,1); // si un escritor puede o no escribir
+    cobeging{
+        Lector(); ... Lector();
+        Escritor(); ... Escritor();
+    }
+}

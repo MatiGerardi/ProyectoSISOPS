@@ -1,0 +1,32 @@
+============== SEMAFOROS ==============
+Semaphore tenedor[5];
+Semaphore capacidad; // evita que los 5 tomen un tenedor a la vez
+int i;
+
+Filosofo(int i){
+    while(forever){
+        pensar();
+        wait(capacidad);
+        wait(tenedor[i]);
+        wait(tenedor[i+1 mod 5]);
+        comer();
+        signal(tenedor[i+1 mod 5]);
+        signal(tenedor[i]);
+        signal(capacidad);
+    }
+}
+
+main(){
+    int i;
+    for (i = 0; i<5; i++){
+        initsem(tenedor[i], 1);
+    }
+    initsem(capacidad, 4);
+    cobegin{
+        Filosofo(0);
+        Filosofo(1);
+        Filosofo(2);
+        Filosofo(3);
+        Filosofo(4);
+    }
+}
