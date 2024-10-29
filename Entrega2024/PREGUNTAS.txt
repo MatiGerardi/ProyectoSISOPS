@@ -1,2 +1,4 @@
--->  no termina, esta mal?
+-->  no termina, esta mal? como finalizar los programas
 --> los while del admin
+--> crear clientes primero o despues que los empleados
+--> agregar el manejo de errores para los msgsnd?

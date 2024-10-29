@@ -1,0 +1,65 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+// Estructura del mensaje
+struct msg_buffer {
+    long msg_type;
+    char msg_text[100];
+};
+
+int main() {
+    key_t key;
+    int msgid;
+    pid_t pid;
+
+    // Crear clave única para la cola de mensajes
+    key = ftok("progfile", 65);
+
+    // Crear la cola de mensajes y obtener el identificador
+    msgid = msgget(key, 0666 | IPC_CREAT);
+    if (msgid == -1) {
+        perror("msgget");
+        exit(EXIT_FAILURE);
+    }
+
+    pid = fork();
+    if (pid == -1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pid == 0) { // Proceso hijo
+        struct msg_buffer message;
+        
+        // Leer mensajes en un bucle hasta que no haya más
+        while (msgrcv(msgid, &message, sizeof(message.msg_text), 1, IPC_NOWAIT) > 0) {
+            printf("Hijo leyó: %s\n", message.msg_text);
+        }
+        
+        exit(0);
+    } else { // Proceso padre
+        struct msg_buffer message;
+        message.msg_type = 1;
+
+        // Enviar el primer mensaje
+        strcpy(message.msg_text, "Primer mensaje!");
+        msgsnd(msgid, &message, sizeof(message.msg_text), 0);
+
+        // Enviar el segundo mensaje
+        strcpy(message.msg_text, "Segundo mensaje!");
+        msgsnd(msgid, &message, sizeof(message.msg_text), 0);
+
+        // Esperar a que el hijo termine
+        wait(NULL);
+
+        // Eliminar la cola de mensajes
+        msgctl(msgid, IPC_RMID, NULL);
+    }
+
+    return 0;
+}
