@@ -9,6 +9,7 @@
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW   "\x1b[33m"
 #define ANSI_COLOR_MAGENTA "\x1b[35m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
@@ -77,16 +78,22 @@ int main() {
             printf("[Cliente %d] Pedido: %s %s\n", i, cliente.pedido, cliente.esVIP ? "(VIP)" : "" );
             
             // Se mete en su cola correspondiente
+            while (1) {
             if (cliente.esVIP && sem_trywait(cola_vip) == 0) { // Si es VIP
                 close(pipeClientesVIP[0]);
                 write(pipeClientesVIP[1], &cliente, sizeof(Cliente));
+                break;
             } else if (!cliente.esVIP && sem_trywait(cola_normal) == 0) { // SI no es VIP es NORMAL
                 close(pipeClientes[0]);
                 write(pipeClientes[1], &cliente, sizeof(Cliente));
+                break;
             } else{
                 cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola VIP llena\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola NORMAL llena\n"ANSI_COLOR_RESET, i);
                 //~ fflush(stdout);
-                exit(0);
+                //~ exit(0);
+                sleep(3);
+                cliente.esVIP ? printf(ANSI_COLOR_YELLOW"X[Cliente %d] vuele mas tarde. Cola VIP\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_YELLOW"X[Cliente %d] vuelve mas tarde. Cola NORMAL\n"ANSI_COLOR_RESET, i);
+            }
             }
 
             // Espera de su pedido

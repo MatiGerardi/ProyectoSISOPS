@@ -11,6 +11,7 @@
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW   "\x1b[33m"
 #define ANSI_COLOR_MAGENTA "\x1b[35m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
@@ -75,28 +76,28 @@ int main() {
     
     // VACIAR COLAS PARA ASEGURAR
     while (msgrcv(msgidHamburguesas, &message, sizeof(message.text), HAMBURGUESA, IPC_NOWAIT) != -1) {
-        printf("SALE: %s\n",message.text);
+        //~ printf("SALE: %s\n",message.text);
     }
     while (msgrcv(msgidVegano, &message, sizeof(message.text), VEGANO, IPC_NOWAIT) != -1) {
-        printf("SALE: %s\n",message.text);
+        //~ printf("SALE: %s\n",message.text);
     }
     while (msgrcv(msgidFritas, &message, sizeof(message.text), PAPAS_FRITAS, IPC_NOWAIT) != -1) {
-        printf("SALE: %s\n",message.text);
+        //~ printf("SALE: %s\n",message.text);
     }
     while (msgrcv(msgidHamRecep, &message, sizeof(message.text), HAMBURGUESA, IPC_NOWAIT) != -1) {
-        printf("SALE: %s\n",message.text);
+        //~ printf("SALE: %s\n",message.text);
     }
     while (msgrcv(msgidVegRecep, &message, sizeof(message.text), VEGANO, IPC_NOWAIT) != -1) {
-        printf("SALE: %s\n",message.text);
+        //~ printf("SALE: %s\n",message.text);
     }
     while (msgrcv(msgidFritasRecep, &message, sizeof(message.text), PAPAS_FRITAS, IPC_NOWAIT) != -1) {
-        printf("SALE: %s\n",message.text);
+        //~ printf("SALE: %s\n",message.text);
     }
     while (msgrcv(msgidClientesVIP, &message, sizeof(message.text), CLIENTE_VIP, IPC_NOWAIT) != -1) {
-        printf("SALE: %s\n",message.text);
+        //~ printf("SALE: %s\n",message.text);
     }
     while (msgrcv(msgidClientes, &message, sizeof(message.text), CLIENTE_COMUN, IPC_NOWAIT) != -1) {
-        printf("SALE: %s\n",message.text);
+        //~ printf("SALE: %s\n",message.text);
     }
 
     Cliente cliente;
@@ -114,18 +115,25 @@ int main() {
             printf("[Cliente %d] Pedido: %s %s\n", i, cliente.pedido, cliente.esVIP ? "(VIP)" : "" );
             fflush(stdout);
             
+            // Se meete en su cola corresponiente
+            while(1) {
             if (cliente.esVIP && sem_trywait(cola_vip) == 0){
                 messageS.type = CLIENTE_VIP;
                 strcpy(messageS.text, cliente.pedido);
                 msgsnd(msgidClientesVIP, &messageS, sizeof(messageS.text), 0);
+                break;
             } else if (!cliente.esVIP && sem_trywait(cola_normal) == 0) { // SI no es VIP es NORMAL
                 messageS.type = CLIENTE_COMUN;
                 strcpy(messageS.text, cliente.pedido);
                 msgsnd(msgidClientes, &messageS, sizeof(messageS.text), 0);
+                break;
             } else{
                 cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola VIP llena\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola NORMAL llena\n"ANSI_COLOR_RESET, i);
                 fflush(stdout);
-                exit(0);
+                //~ exit(0);
+                sleep(3);
+                cliente.esVIP ? printf(ANSI_COLOR_YELLOW"X[Cliente %d] vuele mas tarde. Cola VIP\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_YELLOW"X[Cliente %d] vuelve mas tarde. Cola NORMAL\n"ANSI_COLOR_RESET, i);
+            }
             }
 
             // Espera su pedido
@@ -172,7 +180,7 @@ int main() {
                 while (1) {
                     msgrcv(msgidHamburguesas, &message, sizeof(message.text), HAMBURGUESA, 0);
                     //~ printf("    [Empleado 0] Preparando hamburguesa: %s\n", message.text);
-                    fflush(stdout);
+                    //~ fflush(stdout);
                     sleep(1);
                     messageS.type = HAMBURGUESA;
                     strcpy(messageS.text, "H");
@@ -182,7 +190,7 @@ int main() {
                 while (1) {
                     msgrcv(msgidVegano, &message, sizeof(message.text), VEGANO, 0);
                     //~ printf("    [Empleado 1] Preparando vegano: %s\n", message.text);
-                    fflush(stdout);
+                    //~ fflush(stdout);
                     sleep(1);
                     messageS.type = VEGANO;
                     strcpy(messageS.text, "V");
@@ -192,7 +200,7 @@ int main() {
                 while (1) {
                     msgrcv(msgidFritas, &message, sizeof(message.text), PAPAS_FRITAS, 0);
                     //~ printf("    [Empleado 2] Preparando papas fritas: %s\n", message.text);
-                    fflush(stdout);
+                    //~ fflush(stdout);
                     sleep(1);
                     messageS.type = PAPAS_FRITAS;
                     strcpy(messageS.text, "P");
@@ -202,7 +210,7 @@ int main() {
                 while (1) {
                     msgrcv(msgidFritas, &message, sizeof(message.text), PAPAS_FRITAS, 0);
                     //~ printf("    [Empleado 3] Preparando papas fritas\n");
-                    fflush(stdout);
+                    //~ fflush(stdout);
                     sleep(1);
                     messageS.type = PAPAS_FRITAS;
                     strcpy(messageS.text, "H");
@@ -273,7 +281,6 @@ int main() {
     
     printf("________________ LLEGA EL FINAL ________________");
 
-    // Proceso principal
     // Esperar a que terminen los procesos hijos
     for (int i = 0; i < NUM_EMPLOYEES+NUM_CLIENTES; i++) {
         wait(NULL);
