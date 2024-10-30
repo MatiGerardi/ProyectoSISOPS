@@ -4,7 +4,7 @@
 int main(int argc, char * argv[]){
 	
 	if(argv[2] != NULL){
-		printf("Error: Parametros no validos. Consultar 'manual mostrar_archivo'.\n");
+		printf("Error: Parametros no validos. Consultar 'ayuda mostrar_archivo'.\n");
 		return 0;
 	}
 	

@@ -14,7 +14,7 @@ int main(int argc, char * argv[]){
 
 		printf(ANSI_COLOR_GREEN"crear_directorio	eliminar_directorio\n");
 		printf("crear_archivo		listar_directorio\n");
-		printf("mostrar_archivo		cambiar_permisos\n"ANSI_COLOR_RESET);
+		printf("mostrar_archivo		cambiar_permisos		salir\n"ANSI_COLOR_RESET);
 		return 0;
 	}
 	
@@ -37,6 +37,8 @@ int main(int argc, char * argv[]){
 		printf("DESCRIPCION \n \t Este comando muestra el contenido de un archivo. \n \t Si el archivo se muestra exitosamente, se visualiza en pantalla. \n \t De lo contrario, se muestra un mensaje de error. \nFormato \n \t mostrar_archivo [ruta_archivo]\n");
 	} else if (strcmp(instruccion, "cambiar_permisos") == 0){
 		printf("Descripcion \n \t Este comando cambia los permisos de un archivo especifico. \n \t Si los permisos se cambian exitosamente, se muestra un mensaje de exito. \n \t De lo contrario, se muestra un mensaje de error. \nFormato \n \t cambiar_permisos [ruta_archivo] [permisos] \n \t Donde [permisos] tienen el siguiente formato \n \t \t rwxrwxrwx \n \t Cada conjunto de 'r', 'w', 'x' representa los permisos de lectura, escritura y ejecucion \n \t para el propietario, el grupo y otros, respectivamente.\n \t Debe completar los 9 caracteres correspondientes. \n \t De no requerir un permiso puede reemplazar la letra por '-' (guion medio).\n");
+	} else if (strcmp(instruccion, "salir") == 0){
+		printf("Descripcion \n \t Termina el programa. \n");
 	} else {
 		printf("Ayuda no encontrada \n");
 	}

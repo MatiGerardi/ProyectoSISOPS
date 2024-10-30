@@ -6,7 +6,7 @@ int main(int i, char * argv[]){
     
     
     if(argv[2] != NULL){
-		printf("Error: los parametros son invalidos. 'manual eliminar_directorio' para mas informacion.\n");
+		printf("Error: los parametros son invalidos. 'ayuda eliminar_directorio' para mas informacion.\n");
 		return 0;
 	}
 

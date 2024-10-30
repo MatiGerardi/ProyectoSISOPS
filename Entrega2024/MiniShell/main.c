@@ -37,7 +37,7 @@ int main(){
 			exit(0);
 		}	
 
-		// Si el primer argumento es "manual", se imprime el manual de la instrucción ingresada.
+		// Si el primer argumento es "ayuda", se imprime el ayuda de la instrucción ingresada.
 		char path[50];
 		strcpy(path, "./"); //se copia el path actual
 		strcat(path, args[0]);
@@ -52,24 +52,8 @@ int main(){
 		 		perror("Error");
 		 		fflush(NULL);
 			}
-<<<<<<< HEAD
-
-			case(0):{ // Hijo
-				res = execv(args[0], args);
-				if(res == -1){
-					printf("Error: Comando no existente, consulte el comando 'manual' para recibir manual \n");
-					fflush(NULL);
-				}
-				break;
-			}
-
-			default:{ // Padre
-				wait(NULL); //Espero que termine el hijo;
-			}
-=======
 		}else{
 			wait(NULL);
->>>>>>> 921997d707148861af6e1ee4e06e547e984ebb3d
 		}
     }
     
