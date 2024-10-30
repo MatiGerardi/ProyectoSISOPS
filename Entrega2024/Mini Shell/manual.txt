@@ -1,0 +1,64 @@
+a) Crear un directorio.
+b) Eliminar un directorio.
+c) Crear un archivo.
+d) Listar el contenido de un directorio.
+e) Mostrar el conenido de un archivo.
+f) Mostrar una ayuda con los comandos posibles.
+g) Modificar los permisos de un archivo. Los permisos son de lectura, escritura y
+ejecucion.
+
+-------------------------------------------------------------------------------------
+crear_un_directorio
+Descripcion
+	Se encarga de crear un directorio en la ubicacion donde se encuentra la minishell.
+	En caso de que se pueda crear, se muestra un mensaje de exito.
+	En caso contrario se muestra que hubo un fallo.
+Formato
+	crear_un_directorio [nombre_directorio]
+-------------------------------------------------------------------------------------
+eliminar_un_directorio
+Descripcion
+	Comando encargado de remover un directorio en la ubicacion donde se encuentra la minishell.
+	En caso de que se pueda eliminar el directorio, se mostrara un mensaje de exito.
+	En caso contrario, se mostrar un mensaje de fallo.
+Formato
+	eliminar_un_directorio [nombre_directorio]
+-------------------------------------------------------------------------------------
+crear_un_archivo
+Descripcion
+	Comando encargado de crear un archivo en el directorio en donde se encuentra ubicado.
+	En caso de que se pueda crear el archivo, se mostrara un mensaje de exito.
+	En caso contrario, se mostrara un mensaje de fallo.
+Formato
+	crear_un_archivo [nombre_archivo]
+-------------------------------------------------------------------------------------
+listar_directorio
+Descripcion
+	Comando encargado de listar el contenido de un directorio.
+	En caso de que se pueda listar el contenido del directorio, se mostrara por pantalla.
+	En caso contrario, se mostrar un mensaje de fallo.
+Formato
+	listar_directorio [ruta_directorio]
+-------------------------------------------------------------------------------------
+mostrar_archivo
+Descripcion
+	Comando encargado de mostrar el contenido de un archivo.
+	En caso de que se pueda mostrar el archivo, se visualizara por pantalla.
+	En caso contrario, se mostrar un mensaje de fallo.
+Formato
+	mostrar_archivo [ruta_archivo]
+-------------------------------------------------------------------------------------
+cambiar_permisos
+Descripcion
+	Comando encargado de cambiar los permisos de un archivo en especifico.
+	En caso de que se pueda cambiar los permisos, se mostrara un mensaje de exito.
+	En caso contrario, se mostrar un mensaje de fallo.
+Formato
+	cambiar_permisos [ruta_archivo][permisoDueño, permisoGrupo, permisoOtros]
+
+Donde [permisosX] poseen el siguiente formato
+	1 Ejecutar
+	2 Escribir
+	4 Leer
+	Permitiendose la suma de los numeros, es decir, 7 (1+2+4), permitira leer escribir y ejecutar.
+-------------------------------------------------------------------------------------
