@@ -59,7 +59,7 @@ int main(){
 			case(0):{ // Hijo
 				res = execv(args[0], args);
 				if(res == -1){
-					printf("Error: Comando no existente, consulte el comando 'manual' para recibir ayuda \n");
+					printf("Error: Comando no existente, consulte el comando 'manual' para recibir manual \n");
 					fflush(NULL);
 				}
 				break;

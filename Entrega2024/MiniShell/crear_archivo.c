@@ -24,7 +24,7 @@ int main(int i, char * argv[]){
         while ((read_size = read(file, buffer, BUFFER_SIZE)) > 0){
             write(1, &buffer, read_size);
         }
-        printf("\033[1;32m>> Archivo creado con exito \033[0m \n"); // en verde
+        printf("\033[1;32m>> Archivo creado con exito. Actualmenete no tiene permisos. \033[0m \n"); // en verde
     }    
     
     close(file);     
