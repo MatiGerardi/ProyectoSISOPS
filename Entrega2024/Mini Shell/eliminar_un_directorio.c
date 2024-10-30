@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-//En prueba
 int main(int i, char * argv[]){
     
     

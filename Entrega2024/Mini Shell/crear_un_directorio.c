@@ -3,7 +3,6 @@
 #include <sys/stat.h> //mkdir();
 #include <string.h> //manejo de strings;
 
-
 int main(int i, char * argv[]){
     
     if(argv[2] != NULL){

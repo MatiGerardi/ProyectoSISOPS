@@ -3,10 +3,18 @@
 #include <unistd.h>
 #include <string.h>
 
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
 int main(int argc, char * argv[]){
 
 	if (argv[1] == NULL){ //solo se ingreso "manual" (sin parametros)
-		printf("Para ver el manual de un comando, introducir 'manual <tipo_comando>' \n");
+		printf("Para ver el manual de un comando, introducir 'manual <tipo_comando>' \n\n");
+		printf("Comandos disponibles:\n");
+
+		printf(ANSI_COLOR_GREEN"crear_un_directorio		eliminar_un_directorio\n");
+		printf("crear_un_archivo		listar_directorio\n");
+		printf("mostrar_archivo			cambiar_permisos\n"ANSI_COLOR_RESET);
 		return 0;
 	}
 	
