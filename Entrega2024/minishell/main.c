@@ -5,71 +5,57 @@
 #include <unistd.h>
 
 int main(){
-
     pid_t pid;
-    int res;
-
+    int error;
     char * instruccion = (char*) malloc(sizeof(char)*300);
 	char * args[50];
-
+	
 	for (int j = 0; j < 50; j++){
 		args[j] = NULL;
 	}
 
     while(1){
-		printf("\033[1;33m>> Instrucción: \033[0m");
-
-		fgets(instruccion, sizeof(char)*300, stdin);
+		printf("\e[1;34m>> MiniShell: \033[0m");
+		
+		fgets(instruccion, sizeof(char)*300, stdin); //lee por consola
 		size_t len = strlen(instruccion);
-		instruccion[--len] = '\0';
-
-
-
+		instruccion[--len] = '\0'; //indica el final de la cadena 
+		
 		int i = 0;
 		char * token;
-		token = strtok(instruccion, " ");
+		token = strtok(instruccion, " "); //divide lo escrito en tokens separados por espacio
 		while(token != NULL){
 			args[i] = token;
 			token = strtok(NULL, " ");
 			i++;
 		}
-		args[i] = NULL;
-
-		// Si la instruccion es exit, se termina la ejecucion
+		args[i] = NULL; //asegura que haya null al final del arreglo
+			
+		// Si el primer argumento es "salir", se libera la memoria y se termina el programa.
 		if(strcmp(args[0], "salir") == 0) {
 			free(instruccion);
 			exit(0);
-		}
+		}	
 
-		// En el caso de tratarse de otra instruccion, se busca el path y se modifica el primer elemento de args con el path de la instruccion.
+		// Si el primer argumento es "manual", se imprime el manual de la instrucción ingresada.
 		char path[50];
-		strcpy(path, "./");
+		strcpy(path, "./"); //se copia el path actual
 		strcat(path, args[0]);
 
-		args[0] = path;
-
+		args[0] = path;		
+		
 		pid = fork();
-		switch(pid){
 
-			case(-1):{ // Error
-				printf("Fork error \n");
-				break;
+		if(pid==0){
+			error = execv(args[0], args);
+			if(error == -1){
+		 		perror("Error");
+		 		fflush(NULL);
 			}
-
-			case(0):{ // Hijo
-				res = execv(args[0], args);
-				if(res == -1){
-					printf("Error: Comando no existente, consulte el comando 'manual' para recibir ayuda \n");
-					fflush(NULL);
-				}
-				break;
-			}
-
-			default:{ // Padre
-				wait(NULL); //Espero que termine el hijo;
-			}
+		}else{
+			wait(NULL);
 		}
     }
-
+    
     return 0;
 }
