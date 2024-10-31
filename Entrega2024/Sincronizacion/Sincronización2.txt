@@ -1,0 +1,12 @@
+Sincronización
+SANTA CLAUS
+
+- Santa Claus (SC) duerme y solo puede ser despertado por:
+	° Nueve renos, una vez que regresan de sus vacaciones
+	° Tres elfos que esten teniendo dificultades para hacer juguetes
+
+- Si estos elfos están  resolviendo sus problemas, cualquier otro elfo que quiera visitar a SC debe esperar a que estos terminen
+
+- El ultimo reno que arriba al Polo Norte tiene que despertar a santa mientras los demás esperan a ser enganchados al trineo
+
+- Cuando SC despierta, y hay tres elfos esperando y el ultimo reno q regreso, atiende primero a los renos (tiene mas prioridad )
