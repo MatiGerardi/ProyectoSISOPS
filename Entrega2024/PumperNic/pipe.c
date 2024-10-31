@@ -45,9 +45,22 @@ int main() {
     // Desvincular semáforos si existen (aseguro la inicialización)
     sem_unlink("/cola_normal");
     sem_unlink("/cola_vip");
+    if (sem_unlink("/cola_normal") == -1) perror("Error al desvincular semáforo /cola_normal");
+    if (sem_unlink("/cola_vip") == -1) perror("Error al desvincular semáforo /cola_vip");
+    
     // Semaforos compartidos
-    cola_normal= sem_open("/cola_normal", O_CREAT, 0644, COLA_CLIENTES);
+    cola_normal = sem_open("/cola_normal", O_CREAT, 0644, COLA_CLIENTES);
+    if (cola_normal == SEM_FAILED) {
+        perror("Error al abrir el semáforo /cola_normal");
+        exit(EXIT_FAILURE);
+    }
     cola_vip = sem_open("/cola_vip", O_CREAT, 0644, COLA_CLIENTES);
+    if (cola_vip == SEM_FAILED) {
+        perror("Error al abrir el semáforo /cola_vip");
+        sem_close(cola_normal);
+        sem_unlink("/cola_normal");
+        exit(EXIT_FAILURE);
+    }
     
     pipe(pipeHamburguesas);
     pipe(pipeVegano);
@@ -58,6 +71,20 @@ int main() {
     pipe(pipeFritasRecep);
     pipe(pipeClientes);
     pipe(pipeClientesVIP);
+
+    if (pipe(pipeHamburguesas) == -1 || 
+        pipe(pipeVegano) == -1 || 
+        pipe(pipeFritas) == -1 || 
+        pipe(pipeDistribucion) == -1 || 
+        pipe(pipeClientes) == -1 || 
+        pipe(pipeClientesVIP) == -1 || 
+        pipe(pipeHamRecep) == -1 || 
+        pipe(pipeVegRecep) == -1 || 
+        pipe(pipeFritasRecep) == -1) {
+        perror("Error al crear uno de los pipes");
+        exit(EXIT_FAILURE);
+    }
+
     // Configurar los pipes en modo no bloqueante
     fcntl(pipeClientesVIP[0], F_SETFL, O_NONBLOCK);
     fcntl(pipeClientes[0], F_SETFL, O_NONBLOCK);
@@ -71,7 +98,7 @@ int main() {
         //~ sleep(2);
         if (pidCli < 0) {
             perror("Error al crear proceso Cliente");
-            exit(1);
+            exit(EXIT_FAILURE);
         } else if (pidCli == 0) {// Proceso hijo
             generarPedidos1(&cliente);
             
@@ -232,8 +259,12 @@ int main() {
     // Cerrar semaforos
     sem_close(cola_normal);
     sem_close(cola_vip);
+    if (sem_close(cola_normal) == -1) perror("Error al cerrar semáforo cola_normal");
+    if (sem_close(cola_vip) == -1) perror("Error al cerrar semáforo cola_vip");
     sem_unlink("/cola_normal");
     sem_unlink("/cola_vip");
+    if (sem_unlink("/cola_normal") == -1) perror("Error al desvincular semáforo /cola_normal");
+    if (sem_unlink("/cola_vip") == -1) perror("Error al desvincular semáforo /cola_vip");
 
     return 0;
 }
