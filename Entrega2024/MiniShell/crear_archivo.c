@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
 
     file = open(fullPath, O_CREAT | O_WRONLY, 0644);
     if (file == -1) {
-        printf("\033[1;31m>> Error al crear el archivo \033[0m \n"); // en rojo
+        printf("\033[1;31m>> Error al crear el archivo. \033[0m \n"); // en rojo
     } else {
         printf("\033[1;32m>> Archivo creado con exito. \033[0m \n"); // en verde
     }

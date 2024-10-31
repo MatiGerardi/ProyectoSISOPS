@@ -4,7 +4,7 @@
 int main(int argc, char * argv[]){
 	
 	if(argv[2] != NULL){
-		printf("Error: Parametros no validos. Consultar 'ayuda mostrar_archivo'.\n");
+		printf("\033[1;32m>> Error: Parametros no validos. Consultar 'ayuda mostrar_archivo'.\033[0m \n");
 		return 0;
 	}
 	
@@ -24,7 +24,7 @@ int main(int argc, char * argv[]){
 		printf("\n");
 	}
 	else{
-		perror("Error al abrir el archivo");
+		perror("\033[1;31m>> Error al abrir el archivo\033[0m"); // en rojo
 		fflush(NULL);
 	}
 	

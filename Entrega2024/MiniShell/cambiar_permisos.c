@@ -30,7 +30,7 @@ int main(int argc, char * argv[]){
     char *perm_str = argv[2];
 
     if (strlen(perm_str) != 9) {
-        printf("Error: formato de permisos invalido. Use 'rwxrwxrwx'.\n");
+        printf("\033[1;31m>> Error: formato de permisos invalido. Use 'rwxrwxrwx'. \033[0m \n");
         return 0;
     }
 
@@ -39,7 +39,7 @@ int main(int argc, char * argv[]){
     int resultado = chmod(file_path, permissions);
 
     if (resultado < 0) {
-        perror("Error");
+        perror("\033[1;31m>> Error al cambio de permisos\033[0m"); // en rojo
     } else {
         printf("\033[1;32m>> Permisos cambiados con exito \033[0m \n"); // en verde
     }
