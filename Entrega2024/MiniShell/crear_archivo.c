@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
     if (file == -1) {
         printf("\033[1;31m>> Error al crear el archivo \033[0m \n"); // en rojo
     } else {
-        printf("\033[1;32m>> Archivo creado con exito. Actualmente no tiene permisos. \033[0m \n"); // en verde
+        printf("\033[1;32m>> Archivo creado con exito. \033[0m \n"); // en verde
     }
 
     close(file);
