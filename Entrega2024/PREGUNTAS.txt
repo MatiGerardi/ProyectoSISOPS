@@ -2,3 +2,4 @@
 --> los while del admin
 --> crear clientes primero o despues que los empleados
 --> agregar el manejo de errores para los msgsnd?
+--> crear archivo en cualquier lado

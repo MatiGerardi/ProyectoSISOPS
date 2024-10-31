@@ -74,26 +74,27 @@ int main() {
             exit(1);
         } else if (pidCli == 0) {// Proceso hijo
             generarPedidos1(&cliente);
-           
-            printf("[Cliente %d] Pedido: %s %s\n", i, cliente.pedido, cliente.esVIP ? "(VIP)" : "" );
+            
+            printf(ANSI_COLOR_RESET"[Cliente %d] Pedido: %s %s\n", i, cliente.pedido, cliente.esVIP ? "(VIP)" : "" ); //el reset del principio es porque puede puntintarse de rojo
+            fflush(stdout);
             
             // Se mete en su cola correspondiente
             while (1) {
-            if (cliente.esVIP && sem_trywait(cola_vip) == 0) { // Si es VIP
-                close(pipeClientesVIP[0]);
-                write(pipeClientesVIP[1], &cliente, sizeof(Cliente));
-                break;
-            } else if (!cliente.esVIP && sem_trywait(cola_normal) == 0) { // SI no es VIP es NORMAL
-                close(pipeClientes[0]);
-                write(pipeClientes[1], &cliente, sizeof(Cliente));
-                break;
-            } else{
-                cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola VIP llena\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola NORMAL llena\n"ANSI_COLOR_RESET, i);
-                //~ fflush(stdout);
-                //~ exit(0);
-                sleep(3);
-                cliente.esVIP ? printf(ANSI_COLOR_YELLOW"X[Cliente %d] vuele mas tarde. Cola VIP\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_YELLOW"X[Cliente %d] vuelve mas tarde. Cola NORMAL\n"ANSI_COLOR_RESET, i);
-            }
+                if (cliente.esVIP && sem_trywait(cola_vip) == 0) { // Si es VIP
+                    close(pipeClientesVIP[0]);
+                    write(pipeClientesVIP[1], &cliente, sizeof(Cliente));
+                    break;
+                } else if (!cliente.esVIP && sem_trywait(cola_normal) == 0) { // SI no es VIP es NORMAL
+                    close(pipeClientes[0]);
+                    write(pipeClientes[1], &cliente, sizeof(Cliente));
+                    break;
+                } else{
+                    cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola VIP llena\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola NORMAL llena\n"ANSI_COLOR_RESET, i);
+                    fflush(stdout);
+                    sleep(3);
+                    cliente.esVIP ? printf(ANSI_COLOR_YELLOW"-->[Cliente %d] vuele mas tarde. Cola VIP\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_YELLOW"-->[Cliente %d] vuelve mas tarde. Cola NORMAL\n"ANSI_COLOR_RESET, i);
+                    fflush(stdout);
+                }
             }
 
             // Espera de su pedido
@@ -136,9 +137,8 @@ int main() {
         if (pid < 0) {
             perror("Error al crear proceso Empledos");
             exit(EXIT_FAILURE);
-        }
-        if (pid == 0) {
-            // Código para cada proceso hijo
+        }else if (pid == 0) {
+            // Codigo para cada proceso hijo
             if (i == 0) { // Proceso de Hamburguesas
                 close(pipeHamburguesas[1]);
                 while (1) {
@@ -186,6 +186,7 @@ int main() {
                     while(read(pipeClientesVIP[0], &cliente, sizeof(Cliente)) > 0){
                         //~ printf("------ (entra empleado admin vip)\n");
                         printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido VIP: %s\n"ANSI_COLOR_RESET, cliente.pedido);
+                        fflush(stdout);
                         for (int j = 0; cliente.pedido[j] != '\0'; j++) {
                             char comida = cliente.pedido[j];
                             if (comida == 'H') {
@@ -202,6 +203,7 @@ int main() {
                     if (read(pipeClientes[0], &cliente, sizeof(Cliente)) > 0) {
                         //~ printf("------ (entra empleado admin normal)\n");
                         printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido: %s\n"ANSI_COLOR_MAGENTA, cliente.pedido);
+                        fflush(stdout);
                         for (int j = 0; cliente.pedido[j] != '\0'; j++) {
                             char comida = cliente.pedido[j];
                             if (comida == 'H') {
@@ -221,7 +223,7 @@ int main() {
         }
     }
 
-
+    // --- no llega a ejecutarse esta parte por el while(1) del Admin
     // Esperar a que terminen los procesos hijos
     for (int i = 0; i < NUM_EMPLOYEES + NUM_CLIENTES; i++) {
         wait(NULL);

@@ -74,7 +74,7 @@ int main() {
     cola_normal= sem_open("/cola_normal", O_CREAT, 0644, COLA_CLIENTES);
     cola_vip = sem_open("/cola_vip", O_CREAT, 0644, COLA_CLIENTES);
     
-    // VACIAR COLAS PARA ASEGURAR
+    // VACIAR COLAS PARA ASEGURAR - (si la ejecucion se cortaba quedaban en momoria)
     while (msgrcv(msgidHamburguesas, &message, sizeof(message.text), HAMBURGUESA, IPC_NOWAIT) != -1) {
         //~ printf("SALE: %s\n",message.text);
     }
@@ -112,28 +112,28 @@ int main() {
         } else if (pidCli == 0) {// Proceso hijo
             generarPedidos1(&cliente);
            
-            printf("[Cliente %d] Pedido: %s %s\n", i, cliente.pedido, cliente.esVIP ? "(VIP)" : "" );
+            printf(ANSI_COLOR_RESET"[Cliente %d] Pedido: %s %s\n", i, cliente.pedido, cliente.esVIP ? "(VIP)" : "" );
             fflush(stdout);
             
             // Se meete en su cola corresponiente
             while(1) {
-            if (cliente.esVIP && sem_trywait(cola_vip) == 0){
-                messageS.type = CLIENTE_VIP;
-                strcpy(messageS.text, cliente.pedido);
-                msgsnd(msgidClientesVIP, &messageS, sizeof(messageS.text), 0);
-                break;
-            } else if (!cliente.esVIP && sem_trywait(cola_normal) == 0) { // SI no es VIP es NORMAL
-                messageS.type = CLIENTE_COMUN;
-                strcpy(messageS.text, cliente.pedido);
-                msgsnd(msgidClientes, &messageS, sizeof(messageS.text), 0);
-                break;
-            } else{
-                cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola VIP llena\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola NORMAL llena\n"ANSI_COLOR_RESET, i);
-                fflush(stdout);
-                //~ exit(0);
-                sleep(3);
-                cliente.esVIP ? printf(ANSI_COLOR_YELLOW"X[Cliente %d] vuele mas tarde. Cola VIP\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_YELLOW"X[Cliente %d] vuelve mas tarde. Cola NORMAL\n"ANSI_COLOR_RESET, i);
-            }
+                if (cliente.esVIP && sem_trywait(cola_vip) == 0){
+                    messageS.type = CLIENTE_VIP;
+                    strcpy(messageS.text, cliente.pedido);
+                    msgsnd(msgidClientesVIP, &messageS, sizeof(messageS.text), 0);
+                    break;
+                } else if (!cliente.esVIP && sem_trywait(cola_normal) == 0) { // SI no es VIP es NORMAL
+                    messageS.type = CLIENTE_COMUN;
+                    strcpy(messageS.text, cliente.pedido);
+                    msgsnd(msgidClientes, &messageS, sizeof(messageS.text), 0);
+                    break;
+                } else{
+                    cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola VIP llena\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola NORMAL llena\n"ANSI_COLOR_RESET, i);
+                    fflush(stdout);
+                    sleep(3);
+                    cliente.esVIP ? printf(ANSI_COLOR_YELLOW"-->[Cliente %d] vuele mas tarde. Cola VIP\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_YELLOW"-->[Cliente %d] vuelve mas tarde. Cola NORMAL\n"ANSI_COLOR_RESET, i);
+                    fflush(stdout);
+                }
             }
 
             // Espera su pedido
@@ -175,7 +175,7 @@ int main() {
             perror("fork");
             exit(1);
         } else if (pid == 0) {
-            // Proceso hijo
+            // Codigo para cada proceso hijo
             if (i == 0) { // Proceso de Hamburguesas
                 while (1) {
                     msgrcv(msgidHamburguesas, &message, sizeof(message.text), HAMBURGUESA, 0);
@@ -279,8 +279,7 @@ int main() {
         }
     }
     
-    printf("________________ LLEGA EL FINAL ________________");
-
+    // --- no llega a ejecutarse esta parte por el while(1) del Admin
     // Esperar a que terminen los procesos hijos
     for (int i = 0; i < NUM_EMPLOYEES+NUM_CLIENTES; i++) {
         wait(NULL);
@@ -295,6 +294,12 @@ int main() {
     msgctl(msgidHamRecep, IPC_RMID, NULL);
     msgctl(msgidVegRecep, IPC_RMID, NULL);
     msgctl(msgidFritasRecep, IPC_RMID, NULL);
+
+    // Cerrar semaforos
+    sem_close(cola_normal);
+    sem_close(cola_vip);
+    sem_unlink("/cola_normal");
+    sem_unlink("/cola_vip");
 
     return 0;
 }
