@@ -26,11 +26,11 @@ int main(int argc, char * argv[]){
 	char * instruccion = argv[1];
 	
 	if (strcmp(instruccion, "crear_directorio") == 0){
-		printf("DESCRIPCION \n \t Este comando crea un directorio en la ubicacion actual de la minishell. \n \t Si el directorio se crea exitosamente, se muestra un mensaje de exito. \n \t De lo contrario, se muestra un mensaje de error. \nFormato \n \t crear_directorio [nombre_directorio]\n");
+		printf("DESCRIPCION \n \t Este comando crea un directorio en la ubicacion que es pasada como parametro. \n \t Si el directorio se crea exitosamente, se muestra un mensaje de exito. \n \t De lo contrario, se muestra un mensaje de error. \nFormato \n \t crear_directorio [ruta_directorio] [nombre_directorio]\n");
 	} else if (strcmp(instruccion, "eliminar_directorio") == 0){
-		printf("DESCRIPCION \n \t Este comando elimina un directorio en la ubicacion actual de la minishell. \n \t Si el directorio se elimina exitosamente, se muestra un mensaje de exito. \n \t De lo contrario, se muestra un mensaje de error. \nFormato \n \t eliminar_directorio [nombre_directorio]\n");
+		printf("DESCRIPCION \n \t Este comando elimina un directorio en la ubicacion que es pasada como parametro. \n \t Si el directorio se elimina exitosamente, se muestra un mensaje de exito. \n \t De lo contrario, se muestra un mensaje de error. \nFormato \n \t eliminar_directorio [ruta_directorio]\n");
 	} else if (strcmp(instruccion, "crear_archivo") == 0){
-		printf("DESCRIPCION \n \t Este comando crea un archivo en el directorio actual. \n \t Si el archivo se crea exitosamente, se muestra un mensaje de exito. \n \t De lo contrario, se muestra un mensaje de error. \nFormato \n \t crear_archivo [nombre_archivo]\n");
+		printf("DESCRIPCION \n \t Este comando crea un archivo en la ubicacion que es pasada como parametro. \n \t Si el archivo se crea exitosamente, se muestra un mensaje de exito. \n \t De lo contrario, se muestra un mensaje de error. \nFormato \n \t crear_archivo [ruta_archivo] [nombre_archivo]\n");
 	} else if (strcmp(instruccion, "listar_directorio") == 0){
 		printf("DESCRIPCION \n \t Este comando lista el contenido de un directorio. \n \t Si el contenido se lista exitosamente, se muestra en pantalla. \n \t De lo contrario, se muestra un mensaje de error.\nFormato \n \t listar_directorio [ruta_directorio]\n");
 	} else if (strcmp(instruccion, "mostrar_archivo") == 0){

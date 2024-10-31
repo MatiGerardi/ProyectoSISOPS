@@ -8,8 +8,6 @@
 
 int main(int argc, char *argv[]) {
     int file;
-    char buffer[BUFFER_SIZE];
-    int read_size;
 
     if (argc != 3) {
         printf("Error: los parametros son invalidos. 'ayuda crear_archivo' para mas informacion.\n");
