@@ -1,14 +1,22 @@
+# Variables para el compilador y opciones
 CC = gcc
-CFLAGS = -pthread -Wall
-TARGET = SantaClaus TallerDeMotos
+CFLAGS = -pthread -Wall -g
 
-all: $(TARGET)
+# Nombre del ejecutable final
+EXEC = programa
 
-SantaClaus: SantaClaus.c
-    $(CC) $(CFLAGS) -o $(TARGET) SantaClaus.c
+# Objetivos del ejecutable y los archivos objeto
+$(EXEC): SantaClaus.o TallerDeMotos.o
+	$(CC) $(CFLAGS) -o $(EXEC) SantaClaus.o TallerDeMotos.o
 
-TallerDeMotos: TallerDeMotos.c
-    $(CC) $(CFLAGS) -o TallerDeMotos TallerDeMotos.c
+# Compilación de SantaClaus.c
+SantaClaus.o: SantaClaus.c
+	$(CC) $(CFLAGS) -c SantaClaus.c
 
+# Compilación de TallerDeMotos.c
+TallerDeMotos.o: TallerDeMotos.c
+	$(CC) $(CFLAGS) -c TallerDeMotos.c
+
+# Objetivo para limpiar los archivos generados
 clean:
-    rm -f $(TARGET)
+	rm -f *.o $(EXEC)
