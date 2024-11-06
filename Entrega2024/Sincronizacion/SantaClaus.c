@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include <unistd.h> // Para usar sleep
-#include <time.h>   // Para generar números aleatorios
+#include <unistd.h> 
+#include <time.h>  
 
 #define NUM_RENOS 9
 #define NUM_ELFOS 10
@@ -13,6 +13,7 @@ sem_t renoSem;
 sem_t elfoSem;
 sem_t contadorRenos;
 sem_t contadorElfos;
+sem_t elfoMutex;
 pthread_mutex_t mutex;
 
 void* santa(void* arg) {
@@ -23,7 +24,6 @@ void* santa(void* arg) {
         sem_getvalue(&contadorRenos, &valorRenos);
         sem_getvalue(&contadorElfos, &valorElfos);
         if (valorRenos == NUM_RENOS) {
-            // Preparar el trineo
             printf("Santa está preparando el trineo.\n");
             fflush(stdout);
             for (int i = 0; i < NUM_RENOS; i++) {
@@ -32,8 +32,7 @@ void* santa(void* arg) {
             for (int i = 0; i < NUM_RENOS; i++) {
                 sem_wait(&contadorRenos); // Resetear el contador de renos
             }
-        } else if (valorElfos == 3) {
-            // Ayudar a los elfos
+        } else if (valorElfos >= 3) {
             printf("Santa está ayudando a los elfos.\n");
             fflush(stdout);
             for (int i = 0; i < 3; i++) {
@@ -42,6 +41,7 @@ void* santa(void* arg) {
             for (int i = 0; i < 3; i++) {
                 sem_wait(&contadorElfos); // Resetear el contador de elfos
             }
+            sem_post(&elfoMutex); // Permitir que otros elfos puedan despertar a Santa
         }
         pthread_mutex_unlock(&mutex);
     }
@@ -50,7 +50,7 @@ void* santa(void* arg) {
 
 void* reno(void* arg) {
     while (1) {
-        sleep(rand() % 5 + 1); // Simular el regreso de los renos con un tiempo aleatorio
+        sleep(rand() % 5 + 1); // Simular el tiempo de viaje de los renos con un tiempo aleatorio
         pthread_mutex_lock(&mutex);
         sem_post(&contadorRenos);
         int valorRenos;
@@ -64,7 +64,6 @@ void* reno(void* arg) {
         }
         pthread_mutex_unlock(&mutex);
         sem_wait(&renoSem);
-        // Engancharse al trineo
         printf("Reno enganchándose al trineo.\n");
         fflush(stdout);
     }
@@ -75,6 +74,7 @@ void* elfo(void* arg) {
     while (1) {
         sleep(rand() % 5 + 1); // Simular el tiempo de trabajo de los elfos con un tiempo aleatorio
         if (rand() % 2 == 0) { // Simular que un elfo necesita ayuda con una probabilidad del 50%
+            sem_wait(&elfoMutex); // Asegurar que solo un grupo de elfos pueda despertar a Santa a la vez
             pthread_mutex_lock(&mutex);
             sem_post(&contadorElfos);
             int valorElfos;
@@ -85,10 +85,11 @@ void* elfo(void* arg) {
                 printf("Tres elfos necesitan ayuda, despertando a Santa.\n");
                 fflush(stdout);
                 sem_post(&santaSem);
+            } else {
+                sem_post(&elfoMutex); // Permitir que otros elfos puedan intentar despertar a Santa
             }
             pthread_mutex_unlock(&mutex);
             sem_wait(&elfoSem);
-            // Recibir ayuda de Santa
             printf("Elfo recibiendo ayuda de Santa.\n");
             fflush(stdout);
         }
@@ -97,7 +98,7 @@ void* elfo(void* arg) {
 }
 
 int main() {
-    srand(time(NULL)); // Inicializar la semilla para números aleatorios
+    srand(time(NULL)); 
 
     pthread_t hiloSanta;
     pthread_t hilosRenos[NUM_RENOS];
@@ -108,6 +109,7 @@ int main() {
     sem_init(&elfoSem, 0, 0);
     sem_init(&contadorRenos, 0, 0);
     sem_init(&contadorElfos, 0, 0);
+    sem_init(&elfoMutex, 0, 1); 
     pthread_mutex_init(&mutex, NULL);
 
     pthread_create(&hiloSanta, NULL, santa, NULL);
@@ -131,6 +133,7 @@ int main() {
     sem_destroy(&elfoSem);
     sem_destroy(&contadorRenos);
     sem_destroy(&contadorElfos);
+    sem_destroy(&elfoMutex);
     pthread_mutex_destroy(&mutex);
 
     return 0;
