@@ -23,6 +23,8 @@ typedef struct {
     int esVIP;
 } Cliente;
 
+Cliente cliente;
+char comida; // Para individualizar cada comida
 
 void generarPedidos1(Cliente* cliente) {
     srand(time(NULL) + getpid()); // Seed random para que cada cliente sea distinto
@@ -35,6 +37,77 @@ void generarPedidos1(Cliente* cliente) {
     cliente->esVIP = rand() % 2; // 50% de ser VIP
 }
 
+void cocinero_hamburguesas_simple(){
+    while (1) {
+        // Preparar hamburguesa
+        read(pipeHamburguesas[0], &comida, sizeof(char));
+        // ~ printf("            [Empleado 0] Preparando hamburguesa\n");
+        fflush(stdout);
+        sleep(1);
+        write(pipeHamRecep[1], "H", sizeof(char));
+    }
+}
+
+void cocinero_vegano(){
+    while (1) {
+        // Preparar menú vegano
+        read(pipeVegano[0], &comida, sizeof(char));
+        //~ printf("            [Empleado 1] Preparando menú vegano\n");
+        //~ fflush(stdout);
+        sleep(1);
+        write(pipeVegRecep[1], "V", sizeof(char));
+    }
+}
+
+void cocinero_papas(int id){
+    while (1) {
+        // Preparar papas fritas
+        read(pipeFritas[0], &comida, sizeof(char));
+        //~ printf("            [Empleado 3] Preparando papas fritas\n");
+        //~ fflush(stdout);
+        sleep(1);
+        write(pipeFritasRecep[1], "P", sizeof(char));
+    }
+}
+
+void administrador(){
+    while (1) {
+        while(read(pipeClientesVIP[0], &cliente, sizeof(Cliente)) > 0){
+            //~ printf("------ (entra empleado admin vip)\n");
+            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido VIP: %s\n"ANSI_COLOR_RESET, cliente.pedido);
+            fflush(stdout);
+            for (int j = 0; cliente.pedido[j] != '\0'; j++) {
+                char comida = cliente.pedido[j];
+                if (comida == 'H') {
+                    write(pipeHamburguesas[1], &comida, sizeof(char));
+                } else if (comida == 'V') {
+                    write(pipeVegano[1], &comida, sizeof(char));
+                } else if (comida == 'P') {
+                    write(pipeFritas[1], &comida, sizeof(char));
+                }
+                //~ printf("    [Admin] distribuye %c\n", comida);
+            }
+            //~ printf("        [Admin] Distribuyo un pedido VIP\n");
+        } 
+        if (read(pipeClientes[0], &cliente, sizeof(Cliente)) > 0) {
+            //~ printf("------ (entra empleado admin normal)\n");
+            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido: %s\n"ANSI_COLOR_MAGENTA, cliente.pedido);
+            fflush(stdout);
+            for (int j = 0; cliente.pedido[j] != '\0'; j++) {
+                char comida = cliente.pedido[j];
+                if (comida == 'H') {
+                    write(pipeHamburguesas[1], &comida, sizeof(char));
+                } else if (comida == 'V') {
+                    write(pipeVegano[1], &comida, sizeof(char));
+                } else if (comida == 'P') {
+                    write(pipeFritas[1], &comida, sizeof(char));
+                }
+                //~ printf("    [Admin] distribuye %c\n", comida);
+            }                            
+            //~ printf("        [Admin] Distribuyo un pedido NORMAL\n");
+        }
+    }
+}
 
 int main() {
     int pipeHamburguesas[2], pipeVegano[2], pipeFritas[2], pipeDistribucion[2],
@@ -42,25 +115,6 @@ int main() {
     pipeHamRecep[2], pipeVegRecep[2], pipeFritasRecep[2];
  
     sem_t *cola_normal, *cola_vip;
-    // Desvincular semáforos si existen (aseguro la inicialización)
-    sem_unlink("/cola_normal");
-    sem_unlink("/cola_vip");
-    if (sem_unlink("/cola_normal") == -1) perror("Error al desvincular semáforo /cola_normal");
-    if (sem_unlink("/cola_vip") == -1) perror("Error al desvincular semáforo /cola_vip");
-    
-    // Semaforos compartidos
-    cola_normal = sem_open("/cola_normal", O_CREAT, 0644, COLA_CLIENTES);
-    if (cola_normal == SEM_FAILED) {
-        perror("Error al abrir el semáforo /cola_normal");
-        exit(EXIT_FAILURE);
-    }
-    cola_vip = sem_open("/cola_vip", O_CREAT, 0644, COLA_CLIENTES);
-    if (cola_vip == SEM_FAILED) {
-        perror("Error al abrir el semáforo /cola_vip");
-        sem_close(cola_normal);
-        sem_unlink("/cola_normal");
-        exit(EXIT_FAILURE);
-    }
     
     pipe(pipeHamburguesas);
     pipe(pipeVegano);
@@ -88,9 +142,6 @@ int main() {
     // Configurar los pipes en modo no bloqueante
     fcntl(pipeClientesVIP[0], F_SETFL, O_NONBLOCK);
     fcntl(pipeClientes[0], F_SETFL, O_NONBLOCK);
-    
-    Cliente cliente;
-    char comida; // Para individualizar cada comida
 
     // Crear procesos de Clientes
     for (int i = 0; i < NUM_CLIENTES; i++) {
@@ -159,95 +210,36 @@ int main() {
     }
     
     // Crear procesos empleados
-    for (int i = 0; i < NUM_EMPLOYEES; i++) {
-        int pid = fork();
-        if (pid < 0) {
-            perror("Error al crear proceso Empledos");
-            exit(EXIT_FAILURE);
-        }else if (pid == 0) {
-            // Codigo para cada proceso hijo
-            if (i == 0) { // Proceso de Hamburguesas
-                close(pipeHamburguesas[1]);
-                while (1) {
-                    // Preparar hamburguesa
-                    read(pipeHamburguesas[0], &comida, sizeof(char));
-                    //~ printf("            [Empleado 0] Preparando hamburguesa\n");
-                    fflush(stdout);
-                    sleep(1);
-                    write(pipeHamRecep[1], "H", sizeof(char));
-                }
-            } else if (i == 1) { // Proceso de Menú Vegano
-                close(pipeVegano[1]);
-                while (1) {
-                    // Preparar menú vegano
-                    read(pipeVegano[0], &comida, sizeof(char));
-                    //~ printf("            [Empleado 1] Preparando menú vegano\n");
-                    //~ fflush(stdout);
-                    sleep(1);
-                    write(pipeVegRecep[1], "V", sizeof(char));
-                }
-            } else if (i == 2) { // Proceso de Papas Fritas 1
-                close(pipeFritas[1]);
-                while (1) {
-                    // Preparar papas fritas
-                    read(pipeFritas[0], &comida, sizeof(char));
-                    //~ printf("            [Empleado 2] Preparando papas fritas\n");
-                    //~ fflush(stdout);
-                    sleep(1);
-                    write(pipeFritasRecep[1], "P", sizeof(char));
-                }
-            } else if (i == 3) { // Proceso de Papas Fritas 2
-                close(pipeFritas[1]);
-                while (1) {
-                    // Preparar papas fritas
-                    read(pipeFritas[0], &comida, sizeof(char));
-                    //~ printf("            [Empleado 3] Preparando papas fritas\n");
-                    //~ fflush(stdout);
-                    sleep(1);
-                    write(pipeFritasRecep[1], "P", sizeof(char));
-                }
-            } else if (i == 4) { // Proceso de Distribucion
-                close(pipeClientesVIP[1]); close(pipeClientes[1]);
-                close(pipeHamburguesas[0]); close(pipeVegano[0]); close(pipeFritas[0]);
-                while (1) {
-                    while(read(pipeClientesVIP[0], &cliente, sizeof(Cliente)) > 0){
-                        //~ printf("------ (entra empleado admin vip)\n");
-                        printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido VIP: %s\n"ANSI_COLOR_RESET, cliente.pedido);
-                        fflush(stdout);
-                        for (int j = 0; cliente.pedido[j] != '\0'; j++) {
-                            char comida = cliente.pedido[j];
-                            if (comida == 'H') {
-                                write(pipeHamburguesas[1], &comida, sizeof(char));
-                            } else if (comida == 'V') {
-                                write(pipeVegano[1], &comida, sizeof(char));
-                            } else if (comida == 'P') {
-                                write(pipeFritas[1], &comida, sizeof(char));
-                            }
-                            //~ printf("    [Admin] distribuye %c\n", comida);
-                        }
-                        //~ printf("        [Admin] Distribuyo un pedido VIP\n");
-                    } 
-                    if (read(pipeClientes[0], &cliente, sizeof(Cliente)) > 0) {
-                        //~ printf("------ (entra empleado admin normal)\n");
-                        printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido: %s\n"ANSI_COLOR_MAGENTA, cliente.pedido);
-                        fflush(stdout);
-                        for (int j = 0; cliente.pedido[j] != '\0'; j++) {
-                            char comida = cliente.pedido[j];
-                            if (comida == 'H') {
-                                write(pipeHamburguesas[1], &comida, sizeof(char));
-                            } else if (comida == 'V') {
-                                write(pipeVegano[1], &comida, sizeof(char));
-                            } else if (comida == 'P') {
-                                write(pipeFritas[1], &comida, sizeof(char));
-                            }
-                            //~ printf("    [Admin] distribuye %c\n", comida);
-                        }                            
-                        //~ printf("        [Admin] Distribuyo un pedido NORMAL\n");
-                    }
-                }
-                exit(0);
-            }
-        }
+    pid_t cocinero_ham_p = fork();
+    if (cocinero_ham_p == 0) { // Proceso de Hamburguesas
+        close(pipeHamburguesas[1]);
+        cocinero_hamburguesas_simple();
+        exit(0);
+    }
+    pid_t cocinero_veg_p = fork(); 
+    if (cocinero_veg_p == 0) { // Proceso de Menú Vegano
+        close(pipeVegano[1]);
+        cocinero_vegano(i);
+        exit(0);
+    }
+    pid_t cocinero_fritas1_p = fork();
+    if (cocinero_fritas1_p == 0) { // Proceso de Papas Fritas 1
+        close(pipeFritas[1]);
+        cocinero_papas(1);
+        exit(0);
+    }
+    pid_t cocinero_fritas2_p = fork();
+    if (cocinero_fritas2_p == 0) { // Proceso de Papas Fritas 2
+        close(pipeFritas[1]);
+        cocinero_papas(2);
+        exit(0);
+    }
+    pid_t cocinero_admin_p = fork(); 
+    if (cocinero_admin_p == 0) { // Proceso de Distribucion
+        close(pipeClientesVIP[1]); close(pipeClientes[1]);
+        close(pipeHamburguesas[0]); close(pipeVegano[0]); close(pipeFritas[0]);
+        administrador();
+        exit(0);
     }
 
     // --- no llega a ejecutarse esta parte por el while(1) del Admin
