@@ -96,7 +96,7 @@ void clientes(int i){
     printf(ANSI_COLOR_GREEN"                        >>>>>>[Cliente %d] se fue con su pedido<<<<<<\n"ANSI_COLOR_RESET, i);
 }
 
-void cocinero_hamburguesas_simple(){
+void cocinero_hamburguesas(){
     while (1) {
         // Preparar hamburguesa
         read(pipeHamburguesas[0], &comida, sizeof(char));
@@ -204,10 +204,10 @@ int main() {
     pid_t cocinero_ham_p = fork();
     if (cocinero_ham_p == 0) { 
         close(pipeHamburguesas[1]);
-        cocinero_hamburguesas_simple();
+        cocinero_hamburguesas();
         exit(0);
     }
-     // Proceso de Menú Vegano
+    // Proceso de Menu Vegano
     pid_t cocinero_veg_p = fork(); 
     if (cocinero_veg_p == 0) {
         close(pipeVegano[1]);
