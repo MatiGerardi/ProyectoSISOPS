@@ -18,9 +18,9 @@
 
 #define NUM_EMPLOYEES 5
 #define NUM_CLIENTES 10
-#define COLA_CLIENTES 2
 #define TAMAÑO_PEDIDO 4
 #define PACIENCIA 3
+#define KEY ((key_t) (1234))
 
 //Tipos mensajes
 #define CLIENTE_COMUN 1
@@ -198,7 +198,7 @@ void administrador(){
             distribuirPedido(numCliente, pedido); //probar con &pedido
             //~ printf("[Admin] Distribuyo un pedido VIP\n");
         }
-        if (msgrcv(msgid, &mRecibido, sizeof(cliente.pedido), CLIENTE_COMUN, IPC_NOWAIT) != -1) {
+        if (msgrcv(msgid, &mRecibido, MSGBUF_SIZE, CLIENTE_COMUN, IPC_NOWAIT) != -1) {
             //~ printf("    ------ (empleado admin normal)\n");
             printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido: %s\n" ANSI_COLOR_RESET, mRecibido.text);
             fflush(stdout);
@@ -260,7 +260,6 @@ int main() {
         exit(0);
     }
 
-    
     // --- no llega a ejecutarse esta parte por el while(1) del Admin
     // Esperar a que terminen los procesos hijos
     for (int i = 0; i < NUM_EMPLOYEES+NUM_CLIENTES; i++) {
