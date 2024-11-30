@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
 #include <sys/wait.h>
+#include <fcntl.h>
+#include <string.h>
 #include <time.h>
+
 #include <sys/ipc.h>
 #include <sys/msg.h>
-#include <string.h>
-#include <semaphore.h>
-#include <fcntl.h>
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -16,27 +17,54 @@
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
 #define NUM_EMPLOYEES 5
-#define NUM_CLIENTES 10
-#define COLA_CLIENTES 2
+#define NUM_CLIENTES 5
 #define TAMAÑO_PEDIDO 4
+#define PACIENCIA 3
+#define KEY ((key_t) (1234))
 
+//Tipos mensajes
 #define CLIENTE_COMUN 1
 #define CLIENTE_VIP 2
-#define HAMBURGUESA 3
-#define VEGANO 4
-#define PAPAS_FRITAS 5
+
+#define COCINAR_HAMBURGUESA 3
+#define COCINAR_VEGANO 4
+#define COCINAR_PAPAS_FRITAS 5
+
+#define RECIBIR_HAMBURGUESA 6
+#define RECIBIR_VEGANO 7
+#define RECIBIR_PAPAS_FRITAS 8
 
 typedef struct {
     char pedido[TAMAÑO_PEDIDO]; // Combinación de 'H', 'V', 'P'
     int esVIP;
+    int paciencia;
 } Cliente;
 
-struct msgbuf {
+
+Cliente cliente;
+char pedido[TAMAÑO_PEDIDO];
+
+typedef struct{
     long type;
     char text[TAMAÑO_PEDIDO];
-};
+    int cliente;
+} msgbuf;
 
-void generarPedidos1(Cliente* cliente) {
+#define MSGBUF_SIZE sizeof(msgbuf) - sizeof(long)
+int msgid;
+
+msgbuf colaMensajes;
+
+int concatenarNumeros(int num1, int num2) {
+     // Calcular el número de dígitos de num2
+    int numDigits = (num2 == 0) ? 1 : (int) log10(num2) + 1;
+
+    // Formar el nuevo número
+    int concatenado = num1 * pow(10, numDigits) + num2;
+    return concatenado;
+}
+
+void generarPedidos(Cliente* cliente) {
     srand(time(NULL) + getpid()); // Seed random para que cada cliente sea distinto
     int numPedidos = rand() % 3 + 1; // Entre 1 y 3 comidas
     for (int j = 0; j < numPedidos; j++) {
@@ -45,77 +73,159 @@ void generarPedidos1(Cliente* cliente) {
     }
     cliente->pedido[numPedidos] = '\0'; // Terminar el string
     cliente->esVIP = rand() % 2; // 50% de ser VIP
+    cliente->paciencia = rand() % 10; // si cliente.paciencia > PACIENCIA entra en la fila
+}
+
+void distribuirPedido(int numCliente, char *pedido) {
+    colaMensajes.cliente = numCliente;
+    //printf("CLIENTE: %d, PEDIDO: %s\n", numCliente, pedido);
+    for (int j = 0; pedido[j] != '\0'; j++) {
+        char comida = pedido[j];
+        if (comida == 'H') {   
+            colaMensajes.type = COCINAR_HAMBURGUESA;
+            strcpy(colaMensajes.text, "H");                          
+            msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
+        } else if (comida == 'V') {
+            colaMensajes.type = COCINAR_VEGANO;
+            strcpy(colaMensajes.text, "V");
+            msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
+        } else if (comida == 'P') {
+            colaMensajes.type = COCINAR_PAPAS_FRITAS;
+            strcpy(colaMensajes.text, "P");
+            msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
+        }
+    }
+}
+
+void clientes(int i){
+    generarPedidos(&cliente);
+    
+    printf(ANSI_COLOR_RESET"[Cliente %d] Pedido: %s %s\n", i, cliente.pedido, cliente.esVIP ? "(VIP)" : "" );
+    fflush(stdout);
+    
+    // Se meete en su cola corresponiente
+    while(1) {
+        if (cliente.esVIP && cliente.paciencia > PACIENCIA) { // Si es VIP
+            colaMensajes.type = CLIENTE_VIP;
+            colaMensajes.cliente = i;
+            strcpy(colaMensajes.text, cliente.pedido);
+            msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
+            break;
+        } else if (!cliente.esVIP && cliente.paciencia > PACIENCIA) { // SI no es VIP es NORMAL
+            colaMensajes.type = CLIENTE_COMUN;
+            colaMensajes.cliente = i;
+            strcpy(colaMensajes.text, cliente.pedido);
+            msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
+            break;
+        } else{
+            cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i);
+            fflush(stdout);
+            sleep(3);
+            cliente.paciencia++;
+            cliente.esVIP ? printf(ANSI_COLOR_YELLOW"-->[Cliente %d] vuele mas tarde. Cola VIP\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_YELLOW"-->[Cliente %d] vuelve mas tarde. Cola NORMAL\n"ANSI_COLOR_RESET, i);
+            fflush(stdout);
+        }
+    }
+
+    // Espera su pedido
+    // Verifica que tiene su pedido para luego esperar cada cosa
+    int tieneH = 0, tieneV = 0, tieneP = 0;
+    for (int j = 0; cliente.pedido[j] != '\0'; j++) {
+        if (cliente.pedido[j] == 'H') tieneH++;
+        else if (cliente.pedido[j] == 'V') tieneV++;
+        else if (cliente.pedido[j] == 'P') tieneP++;
+    }
+    //~ printf("El cliente: %d tiene: H: %d, V: %d, P: %d <<<<<<<<<<<<<<<\n", i,tieneH, tieneV, tieneP);
+
+    // Espera a que su pedido este listo
+    while (tieneH > 0 || tieneV > 0 || tieneP > 0) {
+        //~ printf("                [Clinete: %d] esperando ...\n", i);
+        sleep(2);
+        if (tieneH > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, RECIBIR_HAMBURGUESA, IPC_NOWAIT) != -1) {
+            tieneH--;
+            //printf("<<<                        [Cliente %dH] recibio: %s, %d\n", i, colaMensajes.text, colaMensajes.cliente);
+        }
+        if (tieneV > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, RECIBIR_VEGANO, IPC_NOWAIT) != -1) {
+            tieneV--;
+            //printf("<<<                        [Cliente %dV] recibio: %s, %d\n", i, colaMensajes.text, colaMensajes.cliente);
+        }
+        if (tieneP > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, RECIBIR_PAPAS_FRITAS, IPC_NOWAIT) != -1) {
+            tieneP--;
+            //printf("<<<                        [Cliente %dP] recibio: %s, %d\n", i, colaMensajes.text, colaMensajes.cliente);
+        }
+    }
+    printf(ANSI_COLOR_GREEN"                        >>>>>>[Cliente %d] se fue con su pedido<<<<<<\n" ANSI_COLOR_RESET, i);
+}
+
+void cocinero_hamburguesas(){
+    while (1) {
+        msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, COCINAR_HAMBURGUESA, 0);
+        //printf("    [Empleado 0] Preparando hamburguesa: %s, %d\n", colaMensajes.text, colaMensajes.cliente);
+        //fflush(stdout);
+        sleep(1);
+        colaMensajes.type = RECIBIR_HAMBURGUESA;
+        colaMensajes.cliente = colaMensajes.cliente;
+        strcpy(colaMensajes.text, "H");
+        msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
+    }
+}
+
+void cocinero_vegano(){
+    while (1) {
+        msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, COCINAR_VEGANO, 0);
+        //printf("    [Empleado 1] Preparando vegano: %s, %d\n", colaMensajes.text, colaMensajes.cliente);
+        //fflush(stdout);
+        sleep(1);
+        colaMensajes.type = RECIBIR_VEGANO;
+        colaMensajes.cliente = colaMensajes.cliente;
+        strcpy(colaMensajes.text, "V");
+        msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
+    }
+}
+
+void cocinero_papas(int id){
+    while (1) {
+        msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, COCINAR_PAPAS_FRITAS, 0);
+        //printf("    [Empleado %d] Preparando papas fritas: %s, %d\n", id, colaMensajes.text, colaMensajes.cliente);
+        //fflush(stdout);
+        sleep(1);
+        colaMensajes.type = RECIBIR_PAPAS_FRITAS;
+        colaMensajes.cliente = colaMensajes.cliente;
+        strcpy(colaMensajes.text, "P");
+        msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
+    }
+}
+
+void administrador(){
+    while (1) {
+        while (msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, CLIENTE_VIP, IPC_NOWAIT) != -1) {
+            //~ printf("    ------ (empleado admin vip)\n");
+            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedidoVIP: %s, %d\n"ANSI_COLOR_RESET, colaMensajes.text, colaMensajes.cliente);
+            fflush(stdout);
+            strcpy(pedido, colaMensajes.text);
+            int numCliente = colaMensajes.cliente;
+            distribuirPedido(numCliente, pedido); //probar con &pedido
+            //~ printf("[Admin] Distribuyo un pedido VIP\n");
+        }
+        if (msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, CLIENTE_COMUN, IPC_NOWAIT) != -1) {
+            //~ printf("    ------ (empleado admin normal)\n");
+            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido: %s, %d\n"ANSI_COLOR_RESET, colaMensajes.text, colaMensajes.cliente);
+            fflush(stdout);
+            strcpy(pedido, colaMensajes.text);
+            int numCliente = colaMensajes.cliente;
+            distribuirPedido(numCliente, pedido);
+            //~ printf("[Admin] Distribuyo un pedido NORMAL\n");
+        }
+    }
 }
 
 int main() {
-    int msgidHamburguesas, msgidVegano, msgidFritas, msgidClientes, msgidClientesVIP; // id colas
-    int msgidHamRecep, msgidVegRecep, msgidFritasRecep;
-    key_t keyHamburguesas = 1234, keyVegano = 1235, keyFritas = 1236, keyClientes = 1238, keyClientesVIP = 1239;
-    key_t keyHamR = 1244, keyVegR = 1245, keyFritasR = 1246;
-    struct msgbuf message; // mensaje a recibir
-    struct msgbuf messageS; // mensaje a enviar
-    strcpy(messageS.text, "");
-    
-    // Crear colas de mensajes
-    msgidHamburguesas = msgget(keyHamburguesas, IPC_CREAT | 0666);
-    msgidVegano = msgget(keyVegano, IPC_CREAT | 0666);
-    msgidFritas = msgget(keyFritas, IPC_CREAT | 0666);
-    msgidClientes = msgget(keyClientes, IPC_CREAT | 0666);
-    msgidClientesVIP = msgget(keyClientesVIP, IPC_CREAT | 0666);
-    msgidHamRecep = msgget(keyHamR, IPC_CREAT | 0666);
-    msgidVegRecep = msgget(keyVegR, IPC_CREAT | 0666);
-    msgidFritasRecep = msgget(keyFritasR, IPC_CREAT | 0666);
-
-    sem_t *cola_normal, *cola_vip;
-    // Desvincular semáforos si existen (aseguro la inicialización)
-    sem_unlink("/cola_normal");
-    sem_unlink("/cola_vip");
-    if (sem_unlink("/cola_normal") == -1) perror("Error al desvincular semáforo /cola_normal");
-    if (sem_unlink("/cola_vip") == -1) perror("Error al desvincular semáforo /cola_vip");
-
-    // Semaforos compartidos
-    cola_normal = sem_open("/cola_normal", O_CREAT, 0644, COLA_CLIENTES);
-    if (cola_normal == SEM_FAILED) {
-        perror("Error al abrir el semáforo /cola_normal");
-        exit(EXIT_FAILURE);
-    }
-
-    cola_vip = sem_open("/cola_vip", O_CREAT, 0644, COLA_CLIENTES);
-    if (cola_vip == SEM_FAILED) {
-        perror("Error al abrir el semáforo /cola_vip");
-        sem_close(cola_normal);
-        sem_unlink("/cola_normal");
-        exit(EXIT_FAILURE);
-    }
-    
-    // VACIAR COLAS PARA ASEGURAR - (si la ejecucion se cortaba quedaban en momoria)
-    while (msgrcv(msgidHamburguesas, &message, sizeof(message.text), HAMBURGUESA, IPC_NOWAIT) != -1) {
-        //~ printf("SALE: %s\n",message.text);
-    }
-    while (msgrcv(msgidVegano, &message, sizeof(message.text), VEGANO, IPC_NOWAIT) != -1) {
-        //~ printf("SALE: %s\n",message.text);
-    }
-    while (msgrcv(msgidFritas, &message, sizeof(message.text), PAPAS_FRITAS, IPC_NOWAIT) != -1) {
-        //~ printf("SALE: %s\n",message.text);
-    }
-    while (msgrcv(msgidHamRecep, &message, sizeof(message.text), HAMBURGUESA, IPC_NOWAIT) != -1) {
-        //~ printf("SALE: %s\n",message.text);
-    }
-    while (msgrcv(msgidVegRecep, &message, sizeof(message.text), VEGANO, IPC_NOWAIT) != -1) {
-        //~ printf("SALE: %s\n",message.text);
-    }
-    while (msgrcv(msgidFritasRecep, &message, sizeof(message.text), PAPAS_FRITAS, IPC_NOWAIT) != -1) {
-        //~ printf("SALE: %s\n",message.text);
-    }
-    while (msgrcv(msgidClientesVIP, &message, sizeof(message.text), CLIENTE_VIP, IPC_NOWAIT) != -1) {
-        //~ printf("SALE: %s\n",message.text);
-    }
-    while (msgrcv(msgidClientes, &message, sizeof(message.text), CLIENTE_COMUN, IPC_NOWAIT) != -1) {
-        //~ printf("SALE: %s\n",message.text);
-    }
-
-    Cliente cliente;
-    char pedido[4];
+    msgid = msgget(KEY, IPC_CREAT | 0666);
+    msgctl(msgid, IPC_RMID, NULL);
+    msgid = msgget(KEY, IPC_CREAT | 0666);
+    /*Las dos llamadas a msgget junto con la llamada a msgctl aseguran que cualquier 
+     * cola de mensajes existente con la clave KEY sea eliminada y se cree una nueva 
+     * cola de mensajes vacía*/
 
     // Crear procesos clientes
     for (int i = 0; i < NUM_CLIENTES; i++) {
@@ -124,200 +234,48 @@ int main() {
             perror("Error al crear proceso Cliente");
             exit(EXIT_FAILURE);
         } else if (pidCli == 0) {// Proceso hijo
-            generarPedidos1(&cliente);
-           
-            printf(ANSI_COLOR_RESET"[Cliente %d] Pedido: %s %s\n", i, cliente.pedido, cliente.esVIP ? "(VIP)" : "" );
-            fflush(stdout);
-            
-            // Se meete en su cola corresponiente
-            while(1) {
-                if (cliente.esVIP && sem_trywait(cola_vip) == 0){
-                    messageS.type = CLIENTE_VIP;
-                    strcpy(messageS.text, cliente.pedido);
-                    msgsnd(msgidClientesVIP, &messageS, sizeof(messageS.text), 0);
-                    break;
-                } else if (!cliente.esVIP && sem_trywait(cola_normal) == 0) { // SI no es VIP es NORMAL
-                    messageS.type = CLIENTE_COMUN;
-                    strcpy(messageS.text, cliente.pedido);
-                    msgsnd(msgidClientes, &messageS, sizeof(messageS.text), 0);
-                    break;
-                } else{
-                    cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola VIP llena\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue. Cola NORMAL llena\n"ANSI_COLOR_RESET, i);
-                    fflush(stdout);
-                    sleep(3);
-                    cliente.esVIP ? printf(ANSI_COLOR_YELLOW"-->[Cliente %d] vuele mas tarde. Cola VIP\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_YELLOW"-->[Cliente %d] vuelve mas tarde. Cola NORMAL\n"ANSI_COLOR_RESET, i);
-                    fflush(stdout);
-                }
-            }
-
-            // Espera su pedido
-            // Verifica que tiene su pedido para luego esperar cada cosa
-            int tieneH = 0, tieneV = 0, tieneP = 0;
-            for (int j = 0; cliente.pedido[j] != '\0'; j++) {
-                if (cliente.pedido[j] == 'H') tieneH++;
-                else if (cliente.pedido[j] == 'V') tieneV++;
-                else if (cliente.pedido[j] == 'P') tieneP++;
-            }
-            //~ printf("El cliente: %d tiene: H: %d, V: %d, P: %d <<<<<<<<<<<<<<<\n", i,tieneH, tieneV, tieneP);
-       
-            // Espera a que su pedido este listo
-            while (tieneH > 0 || tieneV > 0 || tieneP > 0) {
-                //~ printf("                [Clinete: %d] esperando ...\n", i);
-                sleep(2);
-                if (tieneH > 0 && msgrcv(msgidHamRecep, &message, sizeof(message.text), HAMBURGUESA, IPC_NOWAIT) != -1) {
-                    tieneH--;
-                    //~ printf("<<<                        [Cliente %dH] recibio: %s\n", i, message.text);
-                }
-                if (tieneV > 0 && msgrcv(msgidVegRecep, &message, sizeof(message.text), VEGANO, IPC_NOWAIT) != -1) {
-                    tieneV--;
-                    //~ printf("<<<                        [Cliente %dV] recibio: %s\n", i, message.text);
-                }
-                if (tieneP > 0 && msgrcv(msgidFritasRecep, &message, sizeof(message.text), PAPAS_FRITAS, IPC_NOWAIT) != -1) {
-                    tieneP--;
-                    //~ printf("<<<                        [Cliente %dP] recibio: %s\n", i, message.text);
-                }
-            }
-            cliente.esVIP ? sem_post(cola_vip) : sem_post(cola_normal);
-            printf(ANSI_COLOR_GREEN"                        >>>>>>[Cliente %d] se fue con su pedido<<<<<<\n" ANSI_COLOR_RESET, i);
+            clientes(i);
             exit(0);
         }
     }
 
-    for (int i = 0; i < NUM_EMPLOYEES; i++) {
-        pid_t pid = fork();
-        if (pid < 0) {
-            perror("fork");
-            exit(1);
-        } else if (pid == 0) {
-            // Codigo para cada proceso hijo
-            if (i == 0) { // Proceso de Hamburguesas
-                while (1) {
-                    msgrcv(msgidHamburguesas, &message, sizeof(message.text), HAMBURGUESA, 0);
-                    //~ printf("    [Empleado 0] Preparando hamburguesa: %s\n", message.text);
-                    //~ fflush(stdout);
-                    sleep(1);
-                    messageS.type = HAMBURGUESA;
-                    strcpy(messageS.text, "H");
-                    msgsnd(msgidHamRecep, &messageS, sizeof(message.text), 0);
-                }
-            } else if (i == 1) { // Proceso Vegano
-                while (1) {
-                    msgrcv(msgidVegano, &message, sizeof(message.text), VEGANO, 0);
-                    //~ printf("    [Empleado 1] Preparando vegano: %s\n", message.text);
-                    //~ fflush(stdout);
-                    sleep(1);
-                    messageS.type = VEGANO;
-                    strcpy(messageS.text, "V");
-                    msgsnd(msgidVegRecep, &messageS, sizeof(message.text), 0);
-                }
-            } else if (i == 2) { // Proceso de Papas Fritas
-                while (1) {
-                    msgrcv(msgidFritas, &message, sizeof(message.text), PAPAS_FRITAS, 0);
-                    //~ printf("    [Empleado 2] Preparando papas fritas: %s\n", message.text);
-                    //~ fflush(stdout);
-                    sleep(1);
-                    messageS.type = PAPAS_FRITAS;
-                    strcpy(messageS.text, "P");
-                    msgsnd(msgidFritasRecep, &messageS, sizeof(message.text), 0);
-                }
-            }else if (i == 3) { // Proceso de Papas Fritas
-                while (1) {
-                    msgrcv(msgidFritas, &message, sizeof(message.text), PAPAS_FRITAS, 0);
-                    //~ printf("    [Empleado 3] Preparando papas fritas\n");
-                    //~ fflush(stdout);
-                    sleep(1);
-                    messageS.type = PAPAS_FRITAS;
-                    strcpy(messageS.text, "H");
-                    msgsnd(msgidFritasRecep, &messageS, sizeof(message.text), 0);
-                }
-            } else if (i == 4) { // Proceso de Distribucion
-                //~ printf("    -- se crea Empleado 4\n");
-                while (1) {
-                    while (msgrcv(msgidClientesVIP, &message, sizeof(cliente.pedido), CLIENTE_VIP, IPC_NOWAIT) != -1) {
-                        //~ printf("    ------ (empleado admin vip)\n");
-                        printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedidoVIP: %s\n"ANSI_COLOR_RESET, message.text);
-                        fflush(stdout);
-                        strcpy(pedido, message.text);
-                        for (int j = 0; pedido[j] != '\0'; j++) {
-                            char comida = pedido[j];
-                            //~ strcpy(messageS.text, comida);
-                            if (comida == 'H') {   
-                                messageS.type = HAMBURGUESA;
-                                strcpy(messageS.text, "H");                            
-                                msgsnd(msgidHamburguesas, &messageS, sizeof(message.text), 0);
-                                //~ printf("    [Admin] distribuye %c\n", comida);
-                            } else if (comida == 'V') {
-                                messageS.type = VEGANO;
-                                strcpy(messageS.text, "V");  
-                                msgsnd(msgidVegano, &messageS, sizeof(message.text), 0);
-                                //~ printf("    [Admin] distribuye %c\n", comida);
-                            } else if (comida == 'P') {
-                                messageS.type = PAPAS_FRITAS;
-                                strcpy(messageS.text, "P");  
-                                msgsnd(msgidFritas, &messageS, sizeof(message.text), 0);
-                                //~ printf("    [Admin] distribuye %c\n", comida);
-                            }
-                        }
-                        //~ printf("[Admin] Distribuyo un pedido VIP\n");
-                    }
-                    if (msgrcv(msgidClientes, &message, sizeof(cliente.pedido), CLIENTE_COMUN, IPC_NOWAIT) != -1) {
-                        //~ printf("    ------ (empleado admin normal)\n");
-                        printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido: %s\n" ANSI_COLOR_RESET, message.text);
-                        fflush(stdout);
-                        strcpy(pedido, message.text);
-                        for (int j = 0; pedido[j] != '\0'; j++) {
-                            char comida = pedido[j];
-                            //~ strcpy(messageS.text, comida);
-                            if (comida == 'H') {   
-                                messageS.type = HAMBURGUESA;
-                                strcpy(messageS.text, "H");                          
-                                msgsnd(msgidHamburguesas, &messageS, sizeof(message.text), 0);
-                                //~ printf("    [Admin] distribuye %c\n", comida);
-                            } else if (comida == 'V') {
-                                messageS.type = VEGANO;
-                                strcpy(messageS.text, "V");
-                                msgsnd(msgidVegano, &messageS, sizeof(message.text), 0);
-                                //~ printf("    [Admin] distribuye %c\n", comida);
-                            } else if (comida == 'P') {
-                                messageS.type = PAPAS_FRITAS;
-                                strcpy(messageS.text, "P");
-                                msgsnd(msgidFritas, &messageS, sizeof(message.text), 0);
-                                //~ printf("    [Admin] distribuye %c\n", comida);
-                            }
-                        }
-                        //~ printf("[Admin] Distribuyo un pedido NORMAL\n");
-                    }
-                }
-                exit(0);
-            }
-        }
+    // Codigo para cada empleado
+    // Proceso de Hamburguesas
+    pid_t cocinero_ham_p = fork();
+    if (cocinero_ham_p == 0) { 
+        cocinero_hamburguesas();
+        exit(0);
+    } 
+    // Proceso de Menu Vegano
+    pid_t cocinero_veg_p = fork();
+    if (cocinero_veg_p == 0) { 
+        cocinero_vegano();
+        exit(0);
     }
-    
+    // Proceso de Papas Fritas 1
+    pid_t cocinero_fritas1_p = fork();
+    if (cocinero_fritas1_p == 0) { 
+        cocinero_papas(1);
+        exit(0);
+    }
+    // Proceso de Papas Fritas 2
+    pid_t cocinero_fritas2_p = fork();
+    if (cocinero_fritas2_p == 0) {
+        cocinero_papas(2);
+        exit(0);
+    } 
+    // Proceso de Distribucion
+    pid_t cocinero_admin_p = fork();
+    if (cocinero_admin_p == 0) {
+        administrador();
+        exit(0);
+    }
+
     // --- no llega a ejecutarse esta parte por el while(1) del Admin
     // Esperar a que terminen los procesos hijos
     for (int i = 0; i < NUM_EMPLOYEES+NUM_CLIENTES; i++) {
         wait(NULL);
     }
-
-    // Eliminar colas de mensajes
-    msgctl(msgidHamburguesas, IPC_RMID, NULL);
-    msgctl(msgidVegano, IPC_RMID, NULL);
-    msgctl(msgidFritas, IPC_RMID, NULL);
-    msgctl(msgidClientes, IPC_RMID, NULL);
-    msgctl(msgidClientesVIP, IPC_RMID, NULL);
-    msgctl(msgidHamRecep, IPC_RMID, NULL);
-    msgctl(msgidVegRecep, IPC_RMID, NULL);
-    msgctl(msgidFritasRecep, IPC_RMID, NULL);
-
-    // Cerrar semaforos
-    sem_close(cola_normal);
-    sem_close(cola_vip);
-    if (sem_close(cola_normal) == -1) perror("Error al cerrar semáforo cola_normal");
-    if (sem_close(cola_vip) == -1) perror("Error al cerrar semáforo cola_vip");
-    sem_unlink("/cola_normal");
-    sem_unlink("/cola_vip");
-    if (sem_unlink("/cola_normal") == -1) perror("Error al desvincular semáforo /cola_normal");
-    if (sem_unlink("/cola_vip") == -1) perror("Error al desvincular semáforo /cola_vip");
 
     return 0;
 }
