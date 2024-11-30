@@ -53,8 +53,7 @@ typedef struct{
 #define MSGBUF_SIZE sizeof(msgbuf) - sizeof(long)
 int msgid;
 
-msgbuf mRecibido;
-msgbuf mAEnviar;
+msgbuf colaMensajes;
 
 void generarPedidos(Cliente* cliente) {
     srand(time(NULL) + getpid()); // Seed random para que cada cliente sea distinto
@@ -69,22 +68,22 @@ void generarPedidos(Cliente* cliente) {
 }
 
 void distribuirPedido(int numCliente, char *pedido) {
-    mAEnviar.cliente = numCliente;
+    colaMensajes.cliente = numCliente;
     //printf("CLIENTE: %d, PEDIDO: %s\n", numCliente, pedido);
     for (int j = 0; pedido[j] != '\0'; j++) {
         char comida = pedido[j];
         if (comida == 'H') {   
-            mAEnviar.type = COCINAR_HAMBURGUESA;
-            strcpy(mAEnviar.text, "H");                          
-            msgsnd(msgid, &mAEnviar, MSGBUF_SIZE, 0);
+            colaMensajes.type = COCINAR_HAMBURGUESA;
+            strcpy(colaMensajes.text, "H");                          
+            msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
         } else if (comida == 'V') {
-            mAEnviar.type = COCINAR_VEGANO;
-            strcpy(mAEnviar.text, "V");
-            msgsnd(msgid, &mAEnviar, MSGBUF_SIZE, 0);
+            colaMensajes.type = COCINAR_VEGANO;
+            strcpy(colaMensajes.text, "V");
+            msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
         } else if (comida == 'P') {
-            mAEnviar.type = COCINAR_PAPAS_FRITAS;
-            strcpy(mAEnviar.text, "P");
-            msgsnd(msgid, &mAEnviar, MSGBUF_SIZE, 0);
+            colaMensajes.type = COCINAR_PAPAS_FRITAS;
+            strcpy(colaMensajes.text, "P");
+            msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
         }
     }
 }
@@ -98,16 +97,16 @@ void clientes(int i){
     // Se meete en su cola corresponiente
     while(1) {
         if (cliente.esVIP && cliente.paciencia > PACIENCIA) { // Si es VIP
-            mAEnviar.type = CLIENTE_VIP;
-            mAEnviar.cliente = i;
-            strcpy(mAEnviar.text, cliente.pedido);
-            msgsnd(msgid, &mAEnviar, MSGBUF_SIZE, 0);
+            colaMensajes.type = CLIENTE_VIP;
+            colaMensajes.cliente = i;
+            strcpy(colaMensajes.text, cliente.pedido);
+            msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
             break;
         } else if (!cliente.esVIP && cliente.paciencia > PACIENCIA) { // SI no es VIP es NORMAL
-            mAEnviar.type = CLIENTE_COMUN;
-            mAEnviar.cliente = i;
-            strcpy(mAEnviar.text, cliente.pedido);
-            msgsnd(msgid, &mAEnviar, MSGBUF_SIZE, 0);
+            colaMensajes.type = CLIENTE_COMUN;
+            colaMensajes.cliente = i;
+            strcpy(colaMensajes.text, cliente.pedido);
+            msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
             break;
         } else{
             cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i);
@@ -133,17 +132,17 @@ void clientes(int i){
     while (tieneH > 0 || tieneV > 0 || tieneP > 0) {
         //~ printf("                [Clinete: %d] esperando ...\n", i);
         sleep(2);
-        if (tieneH > 0 && msgrcv(msgid, &mRecibido, MSGBUF_SIZE, RECIBIR_HAMBURGUESA, IPC_NOWAIT) != -1) {
+        if (tieneH > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, RECIBIR_HAMBURGUESA, IPC_NOWAIT) != -1) {
             tieneH--;
-            //printf("<<<                        [Cliente %dH] recibio: %s, %d\n", i, mRecibido.text, mRecibido.cliente);
+            //printf("<<<                        [Cliente %dH] recibio: %s, %d\n", i, colaMensajes.text, colaMensajes.cliente);
         }
-        if (tieneV > 0 && msgrcv(msgid, &mRecibido, MSGBUF_SIZE, RECIBIR_VEGANO, IPC_NOWAIT) != -1) {
+        if (tieneV > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, RECIBIR_VEGANO, IPC_NOWAIT) != -1) {
             tieneV--;
-            //printf("<<<                        [Cliente %dV] recibio: %s, %d\n", i, mRecibido.text, mRecibido.cliente);
+            //printf("<<<                        [Cliente %dV] recibio: %s, %d\n", i, colaMensajes.text, colaMensajes.cliente);
         }
-        if (tieneP > 0 && msgrcv(msgid, &mRecibido, MSGBUF_SIZE, RECIBIR_PAPAS_FRITAS, IPC_NOWAIT) != -1) {
+        if (tieneP > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, RECIBIR_PAPAS_FRITAS, IPC_NOWAIT) != -1) {
             tieneP--;
-            //printf("<<<                        [Cliente %dP] recibio: %s, %d\n", i, mRecibido.text, mRecibido.cliente);
+            //printf("<<<                        [Cliente %dP] recibio: %s, %d\n", i, colaMensajes.text, colaMensajes.cliente);
         }
     }
     printf(ANSI_COLOR_GREEN"                        >>>>>>[Cliente %d] se fue con su pedido<<<<<<\n" ANSI_COLOR_RESET, i);
@@ -151,60 +150,60 @@ void clientes(int i){
 
 void cocinero_hamburguesas(){
     while (1) {
-        msgrcv(msgid, &mRecibido, MSGBUF_SIZE, COCINAR_HAMBURGUESA, 0);
-        //printf("    [Empleado 0] Preparando hamburguesa: %s, %d\n", mRecibido.text, mRecibido.cliente);
-        fflush(stdout);
+        msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, COCINAR_HAMBURGUESA, 0);
+        //printf("    [Empleado 0] Preparando hamburguesa: %s, %d\n", colaMensajes.text, colaMensajes.cliente);
+        //fflush(stdout);
         sleep(1);
-        mAEnviar.type = RECIBIR_HAMBURGUESA;
-        mAEnviar.cliente = mRecibido.cliente;
-        strcpy(mAEnviar.text, "H");
-        msgsnd(msgid, &mAEnviar, MSGBUF_SIZE, 0);
+        colaMensajes.type = RECIBIR_HAMBURGUESA;
+        colaMensajes.cliente = colaMensajes.cliente;
+        strcpy(colaMensajes.text, "H");
+        msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
     }
 }
 
 void cocinero_vegano(){
     while (1) {
-        msgrcv(msgid, &mRecibido, MSGBUF_SIZE, COCINAR_VEGANO, 0);
-        //printf("    [Empleado 1] Preparando vegano: %s, %d\n", mRecibido.text, mRecibido.cliente);
-        fflush(stdout);
+        msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, COCINAR_VEGANO, 0);
+        //printf("    [Empleado 1] Preparando vegano: %s, %d\n", colaMensajes.text, colaMensajes.cliente);
+        //fflush(stdout);
         sleep(1);
-        mAEnviar.type = RECIBIR_VEGANO;
-        mAEnviar.cliente = mRecibido.cliente;
-        strcpy(mAEnviar.text, "V");
-        msgsnd(msgid, &mAEnviar, MSGBUF_SIZE, 0);
+        colaMensajes.type = RECIBIR_VEGANO;
+        colaMensajes.cliente = colaMensajes.cliente;
+        strcpy(colaMensajes.text, "V");
+        msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
     }
 }
 
 void cocinero_papas(int id){
     while (1) {
-        msgrcv(msgid, &mRecibido, MSGBUF_SIZE, COCINAR_PAPAS_FRITAS, 0);
-        //printf("    [Empleado %d] Preparando papas fritas: %s, %d\n", id, mRecibido.text, mRecibido.cliente);
-        fflush(stdout);
+        msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, COCINAR_PAPAS_FRITAS, 0);
+        //printf("    [Empleado %d] Preparando papas fritas: %s, %d\n", id, colaMensajes.text, colaMensajes.cliente);
+        //fflush(stdout);
         sleep(1);
-        mAEnviar.type = RECIBIR_PAPAS_FRITAS;
-        mAEnviar.cliente = mRecibido.cliente;
-        strcpy(mAEnviar.text, "P");
-        msgsnd(msgid, &mAEnviar, MSGBUF_SIZE, 0);
+        colaMensajes.type = RECIBIR_PAPAS_FRITAS;
+        colaMensajes.cliente = colaMensajes.cliente;
+        strcpy(colaMensajes.text, "P");
+        msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
     }
 }
 
 void administrador(){
     while (1) {
-        while (msgrcv(msgid, &mRecibido, MSGBUF_SIZE, CLIENTE_VIP, IPC_NOWAIT) != -1) {
+        while (msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, CLIENTE_VIP, IPC_NOWAIT) != -1) {
             //~ printf("    ------ (empleado admin vip)\n");
-            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedidoVIP: %s, %d\n"ANSI_COLOR_RESET, mRecibido.text, mRecibido.cliente);
+            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedidoVIP: %s, %d\n"ANSI_COLOR_RESET, colaMensajes.text, colaMensajes.cliente);
             fflush(stdout);
-            strcpy(pedido, mRecibido.text);
-            int numCliente = mRecibido.cliente;
+            strcpy(pedido, colaMensajes.text);
+            int numCliente = colaMensajes.cliente;
             distribuirPedido(numCliente, pedido); //probar con &pedido
             //~ printf("[Admin] Distribuyo un pedido VIP\n");
         }
-        if (msgrcv(msgid, &mRecibido, MSGBUF_SIZE, CLIENTE_COMUN, IPC_NOWAIT) != -1) {
+        if (msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, CLIENTE_COMUN, IPC_NOWAIT) != -1) {
             //~ printf("    ------ (empleado admin normal)\n");
-            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido: %s, %d\n"ANSI_COLOR_RESET, mRecibido.text, mRecibido.cliente);
+            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido: %s, %d\n"ANSI_COLOR_RESET, colaMensajes.text, colaMensajes.cliente);
             fflush(stdout);
-            strcpy(pedido, mRecibido.text);
-            int numCliente = mRecibido.cliente;
+            strcpy(pedido, colaMensajes.text);
+            int numCliente = colaMensajes.cliente;
             distribuirPedido(numCliente, pedido);
             //~ printf("[Admin] Distribuyo un pedido NORMAL\n");
         }
