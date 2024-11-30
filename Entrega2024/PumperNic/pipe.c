@@ -27,7 +27,7 @@ typedef struct {
 Cliente cliente;
 char comida; // Para individualizar cada comida
 
-int pipeHamburguesas[2], pipeVegano[2], pipeFritas[2], pipeDistribucion[2],
+int pipeHamburguesas[2], pipeVegano[2], pipeFritas[2],
 pipeClientes[2], pipeClientesVIP[2],
 pipeHamRecep[2], pipeVegRecep[2], pipeFritasRecep[2];
 
@@ -163,7 +163,6 @@ int main() {
     pipe(pipeHamburguesas);
     pipe(pipeVegano);
     pipe(pipeFritas);
-    pipe(pipeDistribucion);
     pipe(pipeHamRecep);
     pipe(pipeVegRecep);
     pipe(pipeFritasRecep);
@@ -173,7 +172,6 @@ int main() {
     if (pipe(pipeHamburguesas) == -1 || 
         pipe(pipeVegano) == -1 || 
         pipe(pipeFritas) == -1 || 
-        pipe(pipeDistribucion) == -1 || 
         pipe(pipeClientes) == -1 || 
         pipe(pipeClientesVIP) == -1 || 
         pipe(pipeHamRecep) == -1 || 
@@ -203,34 +201,97 @@ int main() {
     // Proceso de Hamburguesas
     pid_t cocinero_ham_p = fork();
     if (cocinero_ham_p == 0) { 
+        close(pipeVegano[0]);
+        close(pipeVegano[1]);
+        close(pipeFritas[0]);
+        close(pipeFritas[1]);
+        close(pipeClientes[0]);
+        close(pipeClientes[1]);
+        close(pipeClientesVIP[0]);
+        close(pipeClientesVIP[1]);
+        close(pipeVegRecep[0]);
+        close(pipeVegRecep[1]);
+        close(pipeFritasRecep[0]);
+        close(pipeFritasRecep[1]);
+        
         close(pipeHamburguesas[1]);
+        close(pipeHamRecep[0]);
         cocinero_hamburguesas();
         exit(0);
     }
     // Proceso de Menu Vegano
     pid_t cocinero_veg_p = fork(); 
     if (cocinero_veg_p == 0) {
+        close(pipeHamburguesas[0]);
+        close(pipeHamburguesas[1]);
+        close(pipeFritas[0]);
+        close(pipeFritas[1]);
+        close(pipeClientes[0]);
+        close(pipeClientes[1]);
+        close(pipeClientesVIP[0]);
+        close(pipeClientesVIP[1]);
+        close(pipeHamRecep[0]);
+        close(pipeHamRecep[1]);
+        close(pipeFritasRecep[0]);
+        close(pipeFritasRecep[1]);
+
         close(pipeVegano[1]);
+        close(pipeVegRecep[0]);
         cocinero_vegano(1);
         exit(0);
     }
     // Proceso de Papas Fritas 1
     pid_t cocinero_fritas1_p = fork();
     if (cocinero_fritas1_p == 0) { 
+        close(pipeHamburguesas[0]);
+        close(pipeHamburguesas[1]);
+        close(pipeVegano[0]);
+        close(pipeVegano[1]);
+        close(pipeClientes[0]);
+        close(pipeClientes[1]);
+        close(pipeClientesVIP[0]);
+        close(pipeClientesVIP[1]);
+        close(pipeHamRecep[0]);
+        close(pipeHamRecep[1]);
+        close(pipeVegRecep[0]);
+        close(pipeVegRecep[1]);
+
         close(pipeFritas[1]);
+        close(pipeFritasRecep[0]);
         cocinero_papas(1);
         exit(0);
     }
     // Proceso de Papas Fritas 2
     pid_t cocinero_fritas2_p = fork();
     if (cocinero_fritas2_p == 0) { 
+        close(pipeHamburguesas[0]);
+        close(pipeHamburguesas[1]);
+        close(pipeVegano[0]);
+        close(pipeVegano[1]);
+        close(pipeClientes[0]);
+        close(pipeClientes[1]);
+        close(pipeClientesVIP[0]);
+        close(pipeClientesVIP[1]);
+        close(pipeHamRecep[0]);
+        close(pipeHamRecep[1]);
+        close(pipeVegRecep[0]);
+        close(pipeVegRecep[1]);
+
         close(pipeFritas[1]);
+        close(pipeFritasRecep[0]);
         cocinero_papas(2);
         exit(0);
     }
     // Proceso de Distribucion
-    pid_t cocinero_admin_p = fork(); 
-    if (cocinero_admin_p == 0) { 
+    pid_t admin_p = fork(); 
+    if (admin_p == 0) { 
+        close(pipeHamRecep[0]);
+        close(pipeHamRecep[1]);
+        close(pipeVegRecep[0]);
+        close(pipeVegRecep[1]);
+        close(pipeFritasRecep[0]);
+        close(pipeFritasRecep[1]);
+
         close(pipeClientesVIP[1]); close(pipeClientes[1]);
         close(pipeHamburguesas[0]); close(pipeVegano[0]); close(pipeFritas[0]);
         administrador();
