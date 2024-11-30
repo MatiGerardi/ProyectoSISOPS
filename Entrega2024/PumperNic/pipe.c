@@ -14,7 +14,7 @@
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
 #define NUM_EMPLOYEES 5
-#define NUM_CLIENTES 10
+#define NUM_CLIENTES 5
 #define TAMAÑO_PEDIDO 4
 #define PACIENCIA 3
 

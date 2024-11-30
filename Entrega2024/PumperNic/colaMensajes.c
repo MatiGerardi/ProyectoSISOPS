@@ -17,7 +17,7 @@
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
 #define NUM_EMPLOYEES 5
-#define NUM_CLIENTES 10
+#define NUM_CLIENTES 5
 #define TAMAÑO_PEDIDO 4
 #define PACIENCIA 3
 #define KEY ((key_t) (1234))
@@ -70,6 +70,7 @@ void generarPedidos(Cliente* cliente) {
 
 void distribuirPedido(int numCliente, char *pedido) {
     mAEnviar.cliente = numCliente;
+    //printf("CLIENTE: %d, PEDIDO: %s\n", numCliente, pedido);
     for (int j = 0; pedido[j] != '\0'; j++) {
         char comida = pedido[j];
         if (comida == 'H') {   
@@ -134,15 +135,15 @@ void clientes(int i){
         sleep(2);
         if (tieneH > 0 && msgrcv(msgid, &mRecibido, MSGBUF_SIZE, RECIBIR_HAMBURGUESA, IPC_NOWAIT) != -1) {
             tieneH--;
-            //~ printf("<<<                        [Cliente %dH] recibio: %s\n", i, message.text);
+            //printf("<<<                        [Cliente %dH] recibio: %s, %d\n", i, mRecibido.text, mRecibido.cliente);
         }
         if (tieneV > 0 && msgrcv(msgid, &mRecibido, MSGBUF_SIZE, RECIBIR_VEGANO, IPC_NOWAIT) != -1) {
             tieneV--;
-            //~ printf("<<<                        [Cliente %dV] recibio: %s\n", i, message.text);
+            //printf("<<<                        [Cliente %dV] recibio: %s, %d\n", i, mRecibido.text, mRecibido.cliente);
         }
         if (tieneP > 0 && msgrcv(msgid, &mRecibido, MSGBUF_SIZE, RECIBIR_PAPAS_FRITAS, IPC_NOWAIT) != -1) {
             tieneP--;
-            //~ printf("<<<                        [Cliente %dP] recibio: %s\n", i, message.text);
+            //printf("<<<                        [Cliente %dP] recibio: %s, %d\n", i, mRecibido.text, mRecibido.cliente);
         }
     }
     printf(ANSI_COLOR_GREEN"                        >>>>>>[Cliente %d] se fue con su pedido<<<<<<\n" ANSI_COLOR_RESET, i);
@@ -151,8 +152,8 @@ void clientes(int i){
 void cocinero_hamburguesas(){
     while (1) {
         msgrcv(msgid, &mRecibido, MSGBUF_SIZE, COCINAR_HAMBURGUESA, 0);
-        //~ printf("    [Empleado 0] Preparando hamburguesa: %s\n", message.text);
-        //~ fflush(stdout);
+        //printf("    [Empleado 0] Preparando hamburguesa: %s, %d\n", mRecibido.text, mRecibido.cliente);
+        fflush(stdout);
         sleep(1);
         mAEnviar.type = RECIBIR_HAMBURGUESA;
         mAEnviar.cliente = mRecibido.cliente;
@@ -164,8 +165,8 @@ void cocinero_hamburguesas(){
 void cocinero_vegano(){
     while (1) {
         msgrcv(msgid, &mRecibido, MSGBUF_SIZE, COCINAR_VEGANO, 0);
-        //~ printf("    [Empleado 1] Preparando vegano: %s\n", message.text);
-        //~ fflush(stdout);
+        //printf("    [Empleado 1] Preparando vegano: %s, %d\n", mRecibido.text, mRecibido.cliente);
+        fflush(stdout);
         sleep(1);
         mAEnviar.type = RECIBIR_VEGANO;
         mAEnviar.cliente = mRecibido.cliente;
@@ -176,9 +177,9 @@ void cocinero_vegano(){
 
 void cocinero_papas(int id){
     while (1) {
-        msgrcv(msgid, &mAEnviar, MSGBUF_SIZE, COCINAR_PAPAS_FRITAS, 0);
-        //~ printf("    [Empleado 2] Preparando papas fritas: %s\n", message.text);
-        //~ fflush(stdout);
+        msgrcv(msgid, &mRecibido, MSGBUF_SIZE, COCINAR_PAPAS_FRITAS, 0);
+        //printf("    [Empleado %d] Preparando papas fritas: %s, %d\n", id, mRecibido.text, mRecibido.cliente);
+        fflush(stdout);
         sleep(1);
         mAEnviar.type = RECIBIR_PAPAS_FRITAS;
         mAEnviar.cliente = mRecibido.cliente;
@@ -191,7 +192,7 @@ void administrador(){
     while (1) {
         while (msgrcv(msgid, &mRecibido, MSGBUF_SIZE, CLIENTE_VIP, IPC_NOWAIT) != -1) {
             //~ printf("    ------ (empleado admin vip)\n");
-            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedidoVIP: %s\n"ANSI_COLOR_RESET, mRecibido.text);
+            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedidoVIP: %s, %d\n"ANSI_COLOR_RESET, mRecibido.text, mRecibido.cliente);
             fflush(stdout);
             strcpy(pedido, mRecibido.text);
             int numCliente = mRecibido.cliente;
@@ -200,7 +201,7 @@ void administrador(){
         }
         if (msgrcv(msgid, &mRecibido, MSGBUF_SIZE, CLIENTE_COMUN, IPC_NOWAIT) != -1) {
             //~ printf("    ------ (empleado admin normal)\n");
-            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido: %s\n" ANSI_COLOR_RESET, mRecibido.text);
+            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido: %s, %d\n"ANSI_COLOR_RESET, mRecibido.text, mRecibido.cliente);
             fflush(stdout);
             strcpy(pedido, mRecibido.text);
             int numCliente = mRecibido.cliente;
@@ -214,7 +215,9 @@ int main() {
     msgid = msgget(KEY, IPC_CREAT | 0666);
     msgctl(msgid, IPC_RMID, NULL);
     msgid = msgget(KEY, IPC_CREAT | 0666);
-    /*Las dos llamadas a msgget junto con la llamada a msgctl aseguran que cualquier cola de mensajes existente con la clave KEY sea eliminada y se cree una nueva cola de mensajes vacía*/
+    /*Las dos llamadas a msgget junto con la llamada a msgctl aseguran que cualquier 
+     * cola de mensajes existente con la clave KEY sea eliminada y se cree una nueva 
+     * cola de mensajes vacía*/
 
     // Crear procesos clientes
     for (int i = 0; i < NUM_CLIENTES; i++) {
