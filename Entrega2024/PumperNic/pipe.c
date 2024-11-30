@@ -192,6 +192,18 @@ int main() {
             perror("Error al crear proceso Cliente");
             exit(EXIT_FAILURE);
         } else if (pidCli == 0) {
+            close(pipeHamburguesas[0]);
+            close(pipeHamburguesas[1]);
+            close(pipeVegano[0]);
+            close(pipeVegano[1]);
+            close(pipeFritas[0]);
+            close(pipeFritas[1]);
+            
+            close(pipeClientes[0]);
+            close(pipeClientesVIP[0]);
+            close(pipeHamRecep[1]);
+            close(pipeVegRecep[1]);
+            close(pipeFritasRecep[1]);
             clientes(i);
             exit(0);
         }
