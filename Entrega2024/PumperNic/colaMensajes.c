@@ -55,6 +55,15 @@ int msgid;
 
 msgbuf colaMensajes;
 
+int concatenarNumeros(int num1, int num2) {
+     // Calcular el número de dígitos de num2
+    int numDigits = (num2 == 0) ? 1 : (int) log10(num2) + 1;
+
+    // Formar el nuevo número
+    int concatenado = num1 * pow(10, numDigits) + num2;
+    return concatenado;
+}
+
 void generarPedidos(Cliente* cliente) {
     srand(time(NULL) + getpid()); // Seed random para que cada cliente sea distinto
     int numPedidos = rand() % 3 + 1; // Entre 1 y 3 comidas
