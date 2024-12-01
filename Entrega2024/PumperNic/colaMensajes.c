@@ -56,12 +56,28 @@ int msgid;
 msgbuf colaMensajes;
 
 int concatenarNumeros(int num1, int num2) {
-     // Calcular el número de dígitos de num2
-    int numDigits = (num2 == 0) ? 1 : (int) log10(num2) + 1;
+    // num1 nunca debe ser 0
+    if (num2 == 0) {
+        return num1 * 10;
+    }
 
-    // Formar el nuevo número
-    int concatenado = num1 * pow(10, numDigits) + num2;
-    return concatenado;
+    int num2_temp = num2;
+    int num2_digits = 0;
+
+    // Contar el número de dígitos de num2
+    while (num2_temp != 0) {
+        num2_temp /= 10;
+        num2_digits++;
+    }
+
+    // Multiplicar num1 por 10 elevado al número de dígitos de num2
+    int factor = 1;
+    for (int i = 0; i < num2_digits; i++) {
+        factor *= 10;
+    }
+
+    // Concatenar num1 y num2
+    return num1 * factor + num2;
 }
 
 void generarPedidos(Cliente* cliente) {
@@ -140,16 +156,19 @@ void clientes(int i){
     // Espera a que su pedido este listo
     while (tieneH > 0 || tieneV > 0 || tieneP > 0) {
         //~ printf("                [Clinete: %d] esperando ...\n", i);
+        int esperarBur = concatenarNumeros(RECIBIR_HAMBURGUESA, i);
+        int esperarVeg = concatenarNumeros(RECIBIR_VEGANO, i);
+        int esperarPap = concatenarNumeros(RECIBIR_PAPAS_FRITAS, i);
         sleep(2);
-        if (tieneH > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, RECIBIR_HAMBURGUESA, IPC_NOWAIT) != -1) {
+        if (tieneH > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, esperarBur, IPC_NOWAIT) != -1) {
             tieneH--;
             //printf("<<<                        [Cliente %dH] recibio: %s, %d\n", i, colaMensajes.text, colaMensajes.cliente);
         }
-        if (tieneV > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, RECIBIR_VEGANO, IPC_NOWAIT) != -1) {
+        if (tieneV > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, esperarVeg, IPC_NOWAIT) != -1) {
             tieneV--;
             //printf("<<<                        [Cliente %dV] recibio: %s, %d\n", i, colaMensajes.text, colaMensajes.cliente);
         }
-        if (tieneP > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, RECIBIR_PAPAS_FRITAS, IPC_NOWAIT) != -1) {
+        if (tieneP > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, esperarPap, IPC_NOWAIT) != -1) {
             tieneP--;
             //printf("<<<                        [Cliente %dP] recibio: %s, %d\n", i, colaMensajes.text, colaMensajes.cliente);
         }
@@ -163,7 +182,7 @@ void cocinero_hamburguesas(){
         //printf("    [Empleado 0] Preparando hamburguesa: %s, %d\n", colaMensajes.text, colaMensajes.cliente);
         //fflush(stdout);
         sleep(1);
-        colaMensajes.type = RECIBIR_HAMBURGUESA;
+        colaMensajes.type = concatenarNumeros(RECIBIR_HAMBURGUESA, colaMensajes.cliente);
         colaMensajes.cliente = colaMensajes.cliente;
         strcpy(colaMensajes.text, "H");
         msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
@@ -176,7 +195,7 @@ void cocinero_vegano(){
         //printf("    [Empleado 1] Preparando vegano: %s, %d\n", colaMensajes.text, colaMensajes.cliente);
         //fflush(stdout);
         sleep(1);
-        colaMensajes.type = RECIBIR_VEGANO;
+        colaMensajes.type = concatenarNumeros(RECIBIR_VEGANO, colaMensajes.cliente);
         colaMensajes.cliente = colaMensajes.cliente;
         strcpy(colaMensajes.text, "V");
         msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
@@ -189,7 +208,7 @@ void cocinero_papas(int id){
         //printf("    [Empleado %d] Preparando papas fritas: %s, %d\n", id, colaMensajes.text, colaMensajes.cliente);
         //fflush(stdout);
         sleep(1);
-        colaMensajes.type = RECIBIR_PAPAS_FRITAS;
+        colaMensajes.type = concatenarNumeros(RECIBIR_PAPAS_FRITAS, colaMensajes.cliente);
         colaMensajes.cliente = colaMensajes.cliente;
         strcpy(colaMensajes.text, "P");
         msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
