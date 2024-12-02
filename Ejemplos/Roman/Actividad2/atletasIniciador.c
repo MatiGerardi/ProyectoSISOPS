@@ -9,8 +9,11 @@
 #define CANTMARTILLO 4
 #define CANTJABALINA 4
 
-#define MSG_TYPE_ATLETA 
+#define MSG_TYPE_ATLETA 1
 
+typedef struct {
+    long type;
+} msg_buffer;
 
 int main(){
     int msgid;
@@ -58,12 +61,9 @@ int main(){
             exit(1);
         }
     }
-    struct msg_buffer mensaje;
+    msg_buffer mensaje;
     mensaje.type = MSG_TYPE_ATLETA;
-    msgsnd(msgid, &mensaje, sizeof(struct msg_buffer )- sizeof(long), 0);
+    msgsnd(msgid, &mensaje, sizeof(msg_buffer )- sizeof(long), 0);
     
     return 0;
-
-
 }
-
