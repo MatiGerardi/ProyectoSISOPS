@@ -73,12 +73,10 @@ void* operario5(void* arg) {
 void* operario6(void* arg) {
     while (1) {
         sem_wait(&paint_semaphore);
-        printf("Moto completa\n");
         sem_post(&start_semaphore);
         sem_post(&start_semaphore);
         sem_wait(&paint_semaphore);
         printf("Operario 6: Equipamiento extra agregado\n");
-        printf("Moto completa\n");
         sem_post(&start_semaphore);
         sem_post(&start_semaphore);
         sleep(1);

@@ -1,116 +1,164 @@
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include <unistd.h> 
-#include <time.h>  
+#include <unistd.h> // Para usar sleep
+#include <time.h>   // Para generar números aleatorios
+
+
+
 
 #define NUM_RENOS 9
 #define NUM_ELFOS 10
 
+
+
+
 sem_t santaSem;
-sem_t renoSem;
-sem_t elfoSem;
+sem_t habilitarRenos;
+sem_t habilitarElfos;
 sem_t contadorRenos;
 sem_t contadorElfos;
-sem_t elfoMutex;
-pthread_mutex_t mutex;
+pthread_mutex_t renoMutex;
+pthread_mutex_t elfoMutex;
+
+
+
 
 void* santa(void* arg) {
     while (1) {
         sem_wait(&santaSem);
-        pthread_mutex_lock(&mutex);
-        int valorRenos, valorElfos;
-        sem_getvalue(&contadorRenos, &valorRenos);
-        sem_getvalue(&contadorElfos, &valorElfos);
-        if (valorRenos == NUM_RENOS) {
-            printf("Santa está preparando el trineo.\n");
-            fflush(stdout);
-            for (int i = 0; i < NUM_RENOS; i++) {
-                sem_post(&renoSem);
+        // Verificar si todos los renos han regresado
+        pthread_mutex_lock(&renoMutex);
+        if (sem_trywait(&contadorRenos) != 0) {
+            if(sem_trywait(&habilitarRenos) != 0){
+                printf("Santa está preparando el trineo.\n");
+                fflush(stdout);
+                for (int i = 0; i < NUM_RENOS-1; i++) {
+                    sem_post(&contadorRenos); // Resetear el contador de renos
+                }
+                printf("Todos los renos se engancharon al trineo.\n");
+                fflush(stdout);
+                sem_post(&habilitarRenos);
+                pthread_mutex_unlock(&renoMutex);
             }
-            for (int i = 0; i < NUM_RENOS; i++) {
-                sem_wait(&contadorRenos); // Resetear el contador de renos
+            else{
+                sem_post(&habilitarRenos);
+                pthread_mutex_unlock(&renoMutex);
             }
-        } else if (valorElfos >= 3) {
-            printf("Santa está ayudando a los elfos.\n");
-            fflush(stdout);
-            for (int i = 0; i < 3; i++) {
-                sem_post(&elfoSem);
-            }
-            for (int i = 0; i < 3; i++) {
-                sem_wait(&contadorElfos); // Resetear el contador de elfos
-            }
-            sem_post(&elfoMutex); // Permitir que otros elfos puedan despertar a Santa
+
+
+
+
         }
-        pthread_mutex_unlock(&mutex);
+        else {
+                sem_post(&contadorRenos);
+                pthread_mutex_unlock(&renoMutex);
+            // Verificar si tres elfos necesitan ayuda
+                pthread_mutex_lock(&elfoMutex);
+                if (sem_trywait(&contadorElfos) != 0) {
+                    if(sem_trywait(&habilitarElfos) != 0){
+                        // Ayudar a los elfos
+                        printf("Santa está ayudando a los elfos.\n");
+                        fflush(stdout);
+                        for (int i = 0; i < 2; i++) {
+                            sem_post(&contadorElfos); // Resetear el contador de elfos
+                        }
+                        printf("Todos los elfos recibieron ayuda de Santa.\n");
+                        fflush(stdout);
+                        sem_post(&habilitarElfos);
+                        pthread_mutex_unlock(&elfoMutex);
+                    }
+                    else{
+                        sem_post(&habilitarElfos);
+                        pthread_mutex_unlock(&elfoMutex);
+                    }
+                }
+                else{
+                    sem_post(&contadorElfos);
+                    pthread_mutex_unlock(&elfoMutex);
+                }
+            }
     }
     return NULL;
 }
 
+
+
+
 void* reno(void* arg) {
     while (1) {
-        sleep(rand() % 5 + 1); // Simular el tiempo de viaje de los renos con un tiempo aleatorio
-        pthread_mutex_lock(&mutex);
-        sem_post(&contadorRenos);
-        int valorRenos;
-        sem_getvalue(&contadorRenos, &valorRenos);
-        printf("Reno regresando. Total de renos regresados: %d\n", valorRenos);
-        fflush(stdout);
-        if (valorRenos == NUM_RENOS) {
-            printf("Último reno regresado, despertando a Santa.\n");
+        sleep(rand() % 5 + 1); // Simular el regreso de los renos con un tiempo aleatorio
+        sem_wait(&habilitarRenos);
+        pthread_mutex_lock(&renoMutex);
+        if (sem_trywait(&contadorRenos) == 0) {
+            printf("Reno regresando.\n");
             fflush(stdout);
-            sem_post(&santaSem);
+            sem_post(&habilitarRenos);
         }
-        pthread_mutex_unlock(&mutex);
-        sem_wait(&renoSem);
-        printf("Reno enganchándose al trineo.\n");
-        fflush(stdout);
+        else{
+                printf("Último reno regresado, despertando a Santa.\n");
+                fflush(stdout);
+                sem_post(&santaSem);
+            }
+        pthread_mutex_unlock(&renoMutex);
     }
     return NULL;
 }
+
+
+
 
 void* elfo(void* arg) {
     while (1) {
         sleep(rand() % 5 + 1); // Simular el tiempo de trabajo de los elfos con un tiempo aleatorio
         if (rand() % 2 == 0) { // Simular que un elfo necesita ayuda con una probabilidad del 50%
-            sem_wait(&elfoMutex); // Asegurar que solo un grupo de elfos pueda despertar a Santa a la vez
-            pthread_mutex_lock(&mutex);
-            sem_post(&contadorElfos);
-            int valorElfos;
-            sem_getvalue(&contadorElfos, &valorElfos);
-            printf("Elfo necesita ayuda. Total de elfos esperando: %d\n", valorElfos);
-            fflush(stdout);
-            if (valorElfos == 3) {
-                printf("Tres elfos necesitan ayuda, despertando a Santa.\n");
+            sem_wait(&habilitarElfos);
+            pthread_mutex_lock(&elfoMutex);
+            if (sem_trywait(&contadorElfos) == 0) {
+                printf("Elfo necesita ayuda.\n");
                 fflush(stdout);
-                sem_post(&santaSem);
-            } else {
-                sem_post(&elfoMutex); // Permitir que otros elfos puedan intentar despertar a Santa
+                sem_post(&habilitarElfos);
             }
-            pthread_mutex_unlock(&mutex);
-            sem_wait(&elfoSem);
-            printf("Elfo recibiendo ayuda de Santa.\n");
-            fflush(stdout);
+            else{
+                    printf("Tres elfos necesitan ayuda, despertando a Santa.\n");
+                    fflush(stdout);
+                    sem_post(&santaSem);
+            }
+            pthread_mutex_unlock(&elfoMutex);
         }
     }
     return NULL;
 }
 
+
+
+
 int main() {
-    srand(time(NULL)); 
+    srand(time(NULL)); // Inicializar la semilla para números aleatorios
+
+
+
 
     pthread_t hiloSanta;
     pthread_t hilosRenos[NUM_RENOS];
     pthread_t hilosElfos[NUM_ELFOS];
 
+
+
+
     sem_init(&santaSem, 0, 0);
-    sem_init(&renoSem, 0, 0);
-    sem_init(&elfoSem, 0, 0);
-    sem_init(&contadorRenos, 0, 0);
-    sem_init(&contadorElfos, 0, 0);
-    sem_init(&elfoMutex, 0, 1); 
-    pthread_mutex_init(&mutex, NULL);
+    sem_init(&habilitarRenos, 0, 1);
+    sem_init(&habilitarElfos, 0, 1);
+    sem_init(&contadorRenos, 0, 8);  // Inicializar en 8 para los renos
+    sem_init(&contadorElfos, 0, 2);  // Inicializar en 2 para los elfos
+    pthread_mutex_init(&renoMutex, NULL); // Inicializar el mutex para los renos
+    pthread_mutex_init(&elfoMutex, NULL); // Inicializar el mutex para los elfos
+
+
+
 
     pthread_create(&hiloSanta, NULL, santa, NULL);
     for (int i = 0; i < NUM_RENOS; i++) {
@@ -120,6 +168,9 @@ int main() {
         pthread_create(&hilosElfos[i], NULL, elfo, NULL);
     }
 
+
+
+
     pthread_join(hiloSanta, NULL);
     for (int i = 0; i < NUM_RENOS; i++) {
         pthread_join(hilosRenos[i], NULL);
@@ -128,13 +179,23 @@ int main() {
         pthread_join(hilosElfos[i], NULL);
     }
 
+
+
+
     sem_destroy(&santaSem);
-    sem_destroy(&renoSem);
-    sem_destroy(&elfoSem);
     sem_destroy(&contadorRenos);
     sem_destroy(&contadorElfos);
-    sem_destroy(&elfoMutex);
-    pthread_mutex_destroy(&mutex);
+    sem_destroy(&habilitarRenos);
+    sem_destroy(&habilitarElfos);
+    pthread_mutex_destroy(&renoMutex);
+    pthread_mutex_destroy(&elfoMutex);
+
+
+
 
     return 0;
 }
+
+
+
+
