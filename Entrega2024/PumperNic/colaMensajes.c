@@ -219,7 +219,7 @@ void administrador(){
     while (1) {
         while (msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, CLIENTE_VIP, IPC_NOWAIT) != -1) {
             //~ printf("    ------ (empleado admin vip)\n");
-            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedidoVIP: %s, %d\n"ANSI_COLOR_RESET, colaMensajes.text, colaMensajes.cliente);
+            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedidoVIP: %s, Cliente: %d\n"ANSI_COLOR_RESET, colaMensajes.text, colaMensajes.cliente);
             fflush(stdout);
             strcpy(pedido, colaMensajes.text);
             int numCliente = colaMensajes.cliente;
@@ -228,7 +228,7 @@ void administrador(){
         }
         if (msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, CLIENTE_COMUN, IPC_NOWAIT) != -1) {
             //~ printf("    ------ (empleado admin normal)\n");
-            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido: %s, %d\n"ANSI_COLOR_RESET, colaMensajes.text, colaMensajes.cliente);
+            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido: %s, Cliente: %d\n"ANSI_COLOR_RESET, colaMensajes.text, colaMensajes.cliente);
             fflush(stdout);
             strcpy(pedido, colaMensajes.text);
             int numCliente = colaMensajes.cliente;
