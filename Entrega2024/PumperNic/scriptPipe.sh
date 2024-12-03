@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Compilar el archivo pipe.c
-gcc -o pipe pipe.c -lpthread
+gcc -o pipe pipe.c
 
 # Verificacion de la compilacion
 if [ $? -eq 0 ]; then

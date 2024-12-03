@@ -59,7 +59,7 @@ void clientes(int i){
             close(pipeClientes[0]);
             write(pipeClientes[1], &cliente, sizeof(Cliente));
             break;
-        } else{ // 3 de cada 10 veces el cliente se ira de la fila
+        } else { // 3 de cada 10 veces el cliente se ira de la fila
             cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i);
             fflush(stdout);
             sleep(3);
@@ -100,7 +100,6 @@ void cocinero_hamburguesas(){
     while (1) {
         // Preparar hamburguesa
         read(pipeHamburguesas[0], &comida, sizeof(char));
-        fflush(stdout);
         sleep(1);
         write(pipeHamRecep[1], "H", sizeof(char));
     }
@@ -183,7 +182,7 @@ int main() {
 
     // Configurar los pipes en modo no bloqueante
     fcntl(pipeClientesVIP[0], F_SETFL, O_NONBLOCK);
-    fcntl(pipeClientes[0], F_SETFL, O_NONBLOCK);
+    // El pipe de clintes comunes no se hace No bloque para evitar espera ocupada
 
     // Crear procesos de Clientes
     for (int i = 0; i < NUM_CLIENTES; i++) {

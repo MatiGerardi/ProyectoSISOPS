@@ -23,8 +23,8 @@
 #define KEY ((key_t) (1234))
 
 //Tipos mensajes
-#define CLIENTE_COMUN 1
-#define CLIENTE_VIP 2
+#define CLIENTE_VIP 1
+#define CLIENTE_COMUN 2
 
 #define COCINAR_HAMBURGUESA 3
 #define COCINAR_VEGANO 4
@@ -39,7 +39,6 @@ typedef struct {
     int esVIP;
     int paciencia;
 } Cliente;
-
 
 Cliente cliente;
 char pedido[TAMAÑO_PEDIDO];
@@ -217,23 +216,14 @@ void cocinero_papas(int id){
 
 void administrador(){
     while (1) {
-        while (msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, CLIENTE_VIP, IPC_NOWAIT) != -1) {
+        if (msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, -2, 0) != -1) { // -2 ==> recibe mensajes tipo 1 y tipo 2, con prioridad al menor
             //~ printf("    ------ (empleado admin vip)\n");
-            printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedidoVIP: %s, Cliente: %d\n"ANSI_COLOR_RESET, colaMensajes.text, colaMensajes.cliente);
-            fflush(stdout);
-            strcpy(pedido, colaMensajes.text);
-            int numCliente = colaMensajes.cliente;
-            distribuirPedido(numCliente, pedido); //probar con &pedido
-            //~ printf("[Admin] Distribuyo un pedido VIP\n");
-        }
-        if (msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, CLIENTE_COMUN, IPC_NOWAIT) != -1) {
-            //~ printf("    ------ (empleado admin normal)\n");
             printf(ANSI_COLOR_MAGENTA"      [ADMIN] tiene el pedido: %s, Cliente: %d\n"ANSI_COLOR_RESET, colaMensajes.text, colaMensajes.cliente);
             fflush(stdout);
             strcpy(pedido, colaMensajes.text);
             int numCliente = colaMensajes.cliente;
             distribuirPedido(numCliente, pedido);
-            //~ printf("[Admin] Distribuyo un pedido NORMAL\n");
+            //~ printf("[Admin] Distribuyo un pedido VIP\n");
         }
     }
 }

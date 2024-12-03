@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Compilar el archivo pipe.c
-gcc -o cola colaMensajes.c -lpthread
+gcc -o cola colaMensajes.c
 
 # Verificacion de la compilacion
 if [ $? -eq 0 ]; then
