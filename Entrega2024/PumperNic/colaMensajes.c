@@ -130,9 +130,9 @@ void clientes(int i){
         strcpy(colaMensajes.text, cliente.pedido);
         msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
     } else{
-        cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i);
+        printf(ANSI_COLOR_RED"[Cliente %d] se fue por falta de paciencia.\n"ANSI_COLOR_RESET, i);
         fflush(stdout);
-        exit(0); // Cliente se va y no regresa
+        exit(0);
     }
 
     // Espera su pedido
@@ -152,15 +152,15 @@ void clientes(int i){
         int esperarVeg = concatPedidoNumCliente(RECIBIR_VEGANO, i);
         int esperarPapas = concatPedidoNumCliente(RECIBIR_PAPAS_FRITAS, i);
         sleep(2);
-        if (tieneH > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, esperarBur, IPC_NOWAIT) != -1) {
+        if (tieneH > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, esperarBur, 0) != -1) {
             tieneH--;
             //printf("<<<                        [Cliente %dH] recibio: %s, %d\n", i, colaMensajes.text, colaMensajes.cliente);
         }
-        if (tieneV > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, esperarVeg, IPC_NOWAIT) != -1) {
+        if (tieneV > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, esperarVeg, 0) != -1) {
             tieneV--;
             //printf("<<<                        [Cliente %dV] recibio: %s, %d\n", i, colaMensajes.text, colaMensajes.cliente);
         }
-        if (tieneP > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, esperarPapas, IPC_NOWAIT) != -1) {
+        if (tieneP > 0 && msgrcv(msgid, &colaMensajes, MSGBUF_SIZE, esperarPapas, 0) != -1) {
             tieneP--;
             //printf("<<<                        [Cliente %dP] recibio: %s, %d\n", i, colaMensajes.text, colaMensajes.cliente);
         }
@@ -268,13 +268,13 @@ int main() {
         exit(0);
     } 
     // Proceso de Distribucion
-    pid_t cocinero_admin_p = fork();
-    if (cocinero_admin_p == 0) {
+    pid_t admin_p = fork();
+    if (admin_p == 0) {
         administrador();
         exit(0);
     }
 
-    // --- no llega a ejecutarse esta parte por el while(1) del Admin
+    // --- no llega a ejecutarse esta parte por el cola bloqueadnte del Admin
     // Esperar a que terminen los procesos hijos
     for (int i = 0; i < NUM_EMPLOYEES+NUM_CLIENTES; i++) {
         wait(NULL);
@@ -284,7 +284,7 @@ int main() {
     kill(cocinero_veg_p, SIGKILL);
     kill(cocinero_fritas1_p, SIGKILL);
     kill(cocinero_fritas2_p, SIGKILL);
-    kill(cocinero_admin_p, SIGKILL);
+    kill(admin_p, SIGKILL);
 
     return 0;
 }
