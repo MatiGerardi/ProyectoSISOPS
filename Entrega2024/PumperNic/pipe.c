@@ -150,6 +150,7 @@ void administrador(){
             }    
             sleep(2);                        
         }
+        sleep(1);
     }
 }
 
