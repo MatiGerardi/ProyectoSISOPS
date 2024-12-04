@@ -119,27 +119,20 @@ void clientes(int i){
     fflush(stdout);
     
     // Se meete en su cola corresponiente
-    while(1) {
-        if (cliente.esVIP && cliente.paciencia > PACIENCIA) { // Si es VIP
-            colaMensajes.type = CLIENTE_VIP;
-            colaMensajes.cliente = i;
-            strcpy(colaMensajes.text, cliente.pedido);
-            msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
-            break;
-        } else if (!cliente.esVIP && cliente.paciencia > PACIENCIA) { // SI no es VIP es NORMAL
-            colaMensajes.type = CLIENTE_COMUN;
-            colaMensajes.cliente = i;
-            strcpy(colaMensajes.text, cliente.pedido);
-            msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
-            break;
-        } else{
-            cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i);
-            fflush(stdout);
-            sleep(3);
-            cliente.paciencia++;
-            cliente.esVIP ? printf(ANSI_COLOR_YELLOW"-->[Cliente %d] vuele mas tarde. Cola VIP\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_YELLOW"-->[Cliente %d] vuelve mas tarde. Cola NORMAL\n"ANSI_COLOR_RESET, i);
-            fflush(stdout);
-        }
+    if (cliente.esVIP && cliente.paciencia > PACIENCIA) { // Si es VIP
+        colaMensajes.type = CLIENTE_VIP;
+        colaMensajes.cliente = i;
+        strcpy(colaMensajes.text, cliente.pedido);
+        msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
+    } else if (!cliente.esVIP && cliente.paciencia > PACIENCIA) { // SI no es VIP es NORMAL
+        colaMensajes.type = CLIENTE_COMUN;
+        colaMensajes.cliente = i;
+        strcpy(colaMensajes.text, cliente.pedido);
+        msgsnd(msgid, &colaMensajes, MSGBUF_SIZE, 0);
+    } else{
+        cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i);
+        fflush(stdout);
+        exit(0); // Cliente se va y no regresa
     }
 
     // Espera su pedido
@@ -224,6 +217,7 @@ void administrador(){
             int numCliente = colaMensajes.cliente;
             distribuirPedido(numCliente, pedido);
             //~ printf("[Admin] Distribuyo un pedido VIP\n");
+            sleep(2);
         }
     }
 }
@@ -285,6 +279,12 @@ int main() {
     for (int i = 0; i < NUM_EMPLOYEES+NUM_CLIENTES; i++) {
         wait(NULL);
     }
+
+    kill(cocinero_ham_p, SIGKILL);
+    kill(cocinero_veg_p, SIGKILL);
+    kill(cocinero_fritas1_p, SIGKILL);
+    kill(cocinero_fritas2_p, SIGKILL);
+    kill(cocinero_admin_p, SIGKILL);
 
     return 0;
 }

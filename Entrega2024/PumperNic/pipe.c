@@ -50,23 +50,16 @@ void clientes(int i){
     fflush(stdout);   
     
     // Se mete en su cola correspondiente
-    while (1) {
-        if (cliente.esVIP && cliente.paciencia > PACIENCIA) { // Si es VIP
-            close(pipeClientesVIP[0]);
-            write(pipeClientesVIP[1], &cliente, sizeof(Cliente));
-            break;
-        } else if (!cliente.esVIP && cliente.paciencia > PACIENCIA) { // SI no es VIP es NORMAL
-            close(pipeClientes[0]);
-            write(pipeClientes[1], &cliente, sizeof(Cliente));
-            break;
-        } else { // 3 de cada 10 veces el cliente se ira de la fila
-            cliente.esVIP ? printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_RED"X[Cliente %d] se fue\n"ANSI_COLOR_RESET, i);
-            fflush(stdout);
-            sleep(3);
-            cliente.paciencia++;
-            cliente.esVIP ? printf(ANSI_COLOR_YELLOW"-->[Cliente %d] vuele mas tarde. Cola VIP\n"ANSI_COLOR_RESET, i) : printf(ANSI_COLOR_YELLOW"-->[Cliente %d] vuelve mas tarde. Cola NORMAL\n"ANSI_COLOR_RESET, i);
-            fflush(stdout);
-        }
+    if (cliente.esVIP) {
+        close(pipeClientesVIP[0]);
+        write(pipeClientesVIP[1], &cliente, sizeof(Cliente));
+    } else if (cliente.paciencia > PACIENCIA) {
+        close(pipeClientes[0]);
+        write(pipeClientes[1], &cliente, sizeof(Cliente));
+    } else {
+        printf(ANSI_COLOR_RED"[Cliente %d] se fue por falta de paciencia.\n"ANSI_COLOR_RESET, i);
+        fflush(stdout);
+        exit(0); // Cliente se va y no regresa
     }
 
     // Espera de su pedido
@@ -139,6 +132,7 @@ void administrador(){
                     write(pipeFritas[1], &comida, sizeof(char));
                 }
             }
+            sleep(2);
         } 
         // Una vez que no hay VIP mira si hay normales
         if (read(pipeClientes[0], &cliente, sizeof(Cliente)) > 0) {
@@ -153,7 +147,8 @@ void administrador(){
                 } else if (comida == 'P') {
                     write(pipeFritas[1], &comida, sizeof(char));
                 }
-            }                            
+            }    
+            sleep(2);                        
         }
     }
 }
@@ -182,6 +177,7 @@ int main() {
 
     // Configurar los pipes en modo no bloqueante
     fcntl(pipeClientesVIP[0], F_SETFL, O_NONBLOCK);
+    //fcntl(pipeClientes[0], F_SETFL, O_NONBLOCK);
     // El pipe de clintes comunes no se hace No bloque para evitar espera ocupada
 
     // Crear procesos de Clientes
@@ -309,11 +305,17 @@ int main() {
         exit(0);
     }
 
-    // --- no llega a ejecutarse esta parte por el while(1) del Admin
+    // --- no llega a ejecutarse esta parte por el pipe bloqueadnte del Admin
     // Esperar a que terminen los procesos hijos
     for (int i = 0; i < NUM_EMPLOYEES + NUM_CLIENTES; i++) {
         wait(NULL);
     }
+
+    kill(cocinero_ham_p, SIGKILL);
+    kill(cocinero_veg_p, SIGKILL);
+    kill(cocinero_fritas1_p, SIGKILL);
+    kill(cocinero_fritas2_p, SIGKILL);
+    kill(admin_p, SIGKILL);
 
     return 0;
 }
